@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Large / generated data files — run scraper.py locally to populate
+data/*.pkl
+data/*.pdf
+data/fashion_chroma_db/
+data/fashion_data_2018_2022.csv
+
+# scraped_products.csv is committed as an empty seed file.
+# Full scraped data stays local.
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets / env
+.env
+*.env
