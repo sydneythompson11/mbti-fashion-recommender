@@ -355,30 +355,43 @@ def retrieve_top_products(
     top_k: int = TOP_K,
     gender: str = "",
 ) -> list[dict]:
-    """Rank products by cosine similarity to the query embedding.
-    If gender is provided, products matching that gender are boosted to the top.
-    Non-binary / fluid / agender users see all products ranked by similarity.
     """
-    # Determine which dataset gender values to boost
-    dataset_genders = GENDER_TO_DATASET.get(gender, [])
-    boost_all = len(dataset_genders) > 1 or not dataset_genders
+    Rank products by cosine similarity, with hard gender filtering.
 
-    q_emb = model.encode(query, convert_to_numpy=True)
+    - Woman → only Female + Unisex products
+    - Man   → only Male + Unisex products
+    - Non-binary / Genderfluid / Agender / Prefer not to say / Other
+              → all products, ranked purely by similarity (no filtering)
+
+    Within the filtered set, products are ranked by cosine similarity score.
+    If filtering leaves fewer than top_k results, we fall back to the full
+    catalog ranked by similarity so the closet is never empty.
+    """
+    dataset_genders = GENDER_TO_DATASET.get(gender, [])
+    # Single-gender selections (Woman/Man) get hard-filtered
+    # Multi-gender selections see everything
+    hard_filter = len(dataset_genders) == 1
+
+    q_emb  = model.encode(query, convert_to_numpy=True)
     scores = [cosine_sim(q_emb, product_embeddings[i]) for i in range(len(products))]
 
-    ranked = []
+    scored = []
     for score, product in zip(scores, products):
         p = dict(product)
         p["similarity"] = round(score, 4)
-        # Boost products that match the user's gender preference
-        prod_gender = p.get("gender", "").strip()
-        if not boost_all and dataset_genders:
-            if prod_gender in dataset_genders:
-                p["similarity"] = round(min(score + 0.05, 1.0), 4)
-        ranked.append(p)
+        scored.append(p)
 
-    ranked.sort(key=lambda x: x["similarity"], reverse=True)
-    return ranked[:top_k]
+    if hard_filter and dataset_genders:
+        allowed = set(dataset_genders) | {"Unisex"}   # always include Unisex
+        filtered = [p for p in scored
+                    if p.get("gender", "").strip() in allowed]
+        # Fall back to full catalog if filter leaves too few results
+        pool = filtered if len(filtered) >= max(4, top_k // 2) else scored
+    else:
+        pool = scored
+
+    pool.sort(key=lambda x: x["similarity"], reverse=True)
+    return pool[:top_k]
 
 
 # =============================================================================
@@ -673,10 +686,28 @@ def step_appearance():
 def step_personality():
     render_steps(2)
     st.markdown("### Step 2 — What's your personality type?")
-    st.markdown(
-        f"Don't know your type? Take the free test at "
-        f"[mindprofile.co/personality]({MBTI_TEST_URL}) — it takes about 5 minutes."
-    )
+
+    # ── "Don't know" banner — prominent, not buried ───────────────────────
+    with st.container():
+        col_info, col_btn = st.columns([3, 1])
+        with col_info:
+            st.info(
+                "🔍 **Don't know your type?** Take the free 5-minute assessment, "
+                "then come back here and select your result below. "
+                "The app will stay on this page waiting for you."
+            )
+        with col_btn:
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.link_button(
+                "Take the MBTI Test →",
+                url=MBTI_TEST_URL,
+                use_container_width=True,
+                type="primary",
+            )
+
+    st.markdown("---")
+    st.markdown("#### Select your type below:")
+    st.caption("Hover over any type to see a description of that personality's style.")
 
     # Group MBTI types by temperament for easier selection
     groups = {
@@ -694,10 +725,10 @@ def step_personality():
             profile = MBTI_FASHION_MAP[mbti]
             with col:
                 if st.button(
-                    f"**{mbti}**\n{profile['archetype']}",
+                    f"**{mbti}**  \n{profile['archetype']}",
                     key=f"mbti_{mbti}",
                     use_container_width=True,
-                    help=profile["description"],
+                    help=f"{profile['description']}\n\nColors: {', '.join(profile['colors'][:3])}",
                 ):
                     selected_mbti = mbti
 
@@ -706,7 +737,13 @@ def step_personality():
         st.session_state.step = 3
         st.rerun()
 
+    # Reminder at the bottom for people returning from the test
     st.markdown("---")
+    st.markdown(
+        "📋 **Just finished the test?** Your 4-letter result is shown at the top of "
+        "the MindProfile results page — find it above and click it here."
+    )
+
     col_back, _ = st.columns([1, 3])
     with col_back:
         if st.button("← Back to Appearance"):
