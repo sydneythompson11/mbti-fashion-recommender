@@ -353,9 +353,25 @@ def scrape_shopify_store(base_url: str, brand: str, gender_hint: str,
                 gender = gender_hint
                 if gender_hint == "Unisex":
                     combined = (title + " " + product_type).lower()
-                    if any(w in combined for w in ["women", "woman", "female", "girl", "ladies"]):
+                    # Explicit female signals
+                    if any(w in combined for w in [
+                        "women", "woman", "female", "girl", "ladies",
+                        "dress", "skirt", "blouse", "cami", "bra",
+                        "bikini", "swimsuit", "lace", "ruffle", "strapless",
+                        "wrap dress", "midi", "maxi", "corset", "bralette",
+                        "romper", "jumpsuit", "crop top", "bodysuit",
+                    ]):
                         gender = "Female"
-                    elif any(w in combined for w in ["men", "man", "male", "boy"]):
+                    # Explicit male signals
+                    elif any(w in combined for w in [
+                        " men", "man ", "male", " boy", "guys",
+                        "polo", "button up", "button-up", "chino",
+                        "dad hat", "a-frame hat", "rope hat",
+                        "5-pocket pant", "lined short", "crossover short",
+                        "riviera knit", "alpha vest", "ao ", "tfp ",
+                        "pyca pro", "versaknit", "slim-fit pant",
+                        "classic-fit short",
+                    ]):
                         gender = "Male"
 
                 # Build a description string from title + type for inference helpers

@@ -347,6 +347,69 @@ def embed_products(_model: SentenceTransformer, product_tuples: tuple) -> np.nda
     return _model.encode(texts, convert_to_numpy=True, show_progress_bar=False)
 
 
+# Keywords that strongly signal a product is masculine-coded,
+# used to filter Unisex-tagged items for Woman users.
+_MASCULINE_SIGNALS = {
+    "polo", "button up", "button-up", "men's", "mens", "boyfriend",
+    "dad hat", "a-frame hat", "rope hat", "vest", "5-pocket pant",
+    "slim-fit", "classic-fit", "signature-fit", "lined short",
+    "crossover short", "riviera knit", "ao ", "tfp ", "pyca pro",
+    "versaknit", "alpha vest", "script hat", "x tech", "c tech",
+}
+
+# Keywords that strongly signal a product is feminine-coded,
+# used to filter Unisex-tagged items for Man users.
+_FEMININE_SIGNALS = {
+    "women's", "womens", "dress", "skirt", "blouse", "cami", "crop top",
+    "bodysuit", "bikini", "swimsuit", "floral", "lace", "ruffle",
+    "strapless", "wrap", "midi", "maxi", "mini skirt", "corset",
+    "bralette", "lingerie", "romper", "jumpsuit",
+}
+
+
+def _is_masculine_coded(product_name: str) -> bool:
+    name = product_name.lower()
+    return any(sig in name for sig in _MASCULINE_SIGNALS)
+
+
+def _is_feminine_coded(product_name: str) -> bool:
+    name = product_name.lower()
+    return any(sig in name for sig in _FEMININE_SIGNALS)
+
+
+def _passes_gender_filter(product: dict, target_gender: str) -> bool:
+    """
+    Return True if this product should be shown to a user with target_gender.
+
+    Rules:
+      - Female-tagged products: shown to Woman, hidden from Man
+      - Male-tagged products:   shown to Man, hidden from Woman
+      - Unisex-tagged products: shown to everyone UNLESS the product name
+        contains strong signals for the opposite gender
+    """
+    prod_gender  = product.get("gender", "").strip()
+    product_name = product.get("product_name", "")
+
+    if target_gender == "Female":
+        if prod_gender == "Female":
+            return True
+        if prod_gender == "Male":
+            return False
+        # Unisex — exclude if it reads as masculine
+        return not _is_masculine_coded(product_name)
+
+    if target_gender == "Male":
+        if prod_gender == "Male":
+            return True
+        if prod_gender == "Female":
+            return False
+        # Unisex — exclude if it reads as feminine
+        return not _is_feminine_coded(product_name)
+
+    # Any other value (Unisex target, non-binary, etc.) — include everything
+    return True
+
+
 def retrieve_top_products(
     query: str,
     products: list[dict],
@@ -356,21 +419,18 @@ def retrieve_top_products(
     gender: str = "",
 ) -> list[dict]:
     """
-    Rank products by cosine similarity, with hard gender filtering.
+    Rank products by cosine similarity with smart gender filtering.
 
-    - Woman → only Female + Unisex products
-    - Man   → only Male + Unisex products
-    - Non-binary / Genderfluid / Agender / Prefer not to say / Other
-              → all products, ranked purely by similarity (no filtering)
+    Woman  → Female products + Unisex products that aren't masculine-coded
+    Man    → Male products + Unisex products that aren't feminine-coded
+    Others → full catalog, ranked purely by similarity
 
-    Within the filtered set, products are ranked by cosine similarity score.
-    If filtering leaves fewer than top_k results, we fall back to the full
-    catalog ranked by similarity so the closet is never empty.
+    Falls back to the full catalog if filtering leaves fewer than 4 results.
     """
     dataset_genders = GENDER_TO_DATASET.get(gender, [])
-    # Single-gender selections (Woman/Man) get hard-filtered
-    # Multi-gender selections see everything
-    hard_filter = len(dataset_genders) == 1
+    # Only apply filtering for single-gender selections (Woman / Man)
+    apply_filter = len(dataset_genders) == 1
+    target = dataset_genders[0] if apply_filter else ""
 
     q_emb  = model.encode(query, convert_to_numpy=True)
     scores = [cosine_sim(q_emb, product_embeddings[i]) for i in range(len(products))]
@@ -381,12 +441,10 @@ def retrieve_top_products(
         p["similarity"] = round(score, 4)
         scored.append(p)
 
-    if hard_filter and dataset_genders:
-        allowed = set(dataset_genders) | {"Unisex"}   # always include Unisex
-        filtered = [p for p in scored
-                    if p.get("gender", "").strip() in allowed]
-        # Fall back to full catalog if filter leaves too few results
-        pool = filtered if len(filtered) >= max(4, top_k // 2) else scored
+    if apply_filter and target:
+        filtered = [p for p in scored if _passes_gender_filter(p, target)]
+        # Safety fallback — never show an empty closet
+        pool = filtered if len(filtered) >= 4 else scored
     else:
         pool = scored
 
