@@ -40,7 +40,7 @@ EMBEDDING_MODEL   = "all-MiniLM-L6-v2"
 TOP_K             = 12   # products to show in the closet grid
 
 # ── External links ────────────────────────────────────────────────────────────
-MBTI_TEST_URL     = "https://mindprofile.co/personality"
+MBTI_TEST_URL     = "https://www.16personalities.com"
 APPEARANCE_FORM   = (
     "https://docs.google.com/forms/d/e/"
     "1FAIpQLScGeEKu5EJALrkkHmJpnzfyBxpd9ezzBgxVnzu9FPl9155wHw/viewform"
@@ -799,7 +799,7 @@ def step_personality():
     st.markdown("---")
     st.markdown(
         "📋 **Just finished the test?** Your 4-letter result is shown at the top of "
-        "the MindProfile results page — find it above and click it here."
+        "the 16Personalities results page — find it above and click it here."
     )
 
     col_back, _ = st.columns([1, 3])

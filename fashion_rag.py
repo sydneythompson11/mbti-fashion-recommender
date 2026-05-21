@@ -14,7 +14,7 @@ User Flow (two-stage profiling):
     Form: https://docs.google.com/forms/d/e/1FAIpQLScGeEKu5EJALrkkHmJpnzfyBxpd9ezzBgxVnzu9FPl9155wHw/viewform
 
   Stage 2 — Personality Profile (MBTI):
-    Users take the MBTI assessment at https://mindprofile.co/personality and enter
+    Users take the free MBTI assessment at https://www.16personalities.com and enter
     their 4-letter type. Each type maps to a fashion archetype (style, silhouette,
     preferred categories).
 
@@ -62,8 +62,8 @@ LLM_MODEL_ID = "anthropic.claude-3-haiku-20240307-v1:0"
 
 TOP_K = 5
 
-# URL for the MBTI personality assessment
-MBTI_TEST_URL = "https://mindprofile.co/personality"
+# URL for the MBTI personality assessment — free, no account required
+MBTI_TEST_URL = "https://www.16personalities.com"
 
 # Google Form — appearance profile (eye color, hair color, skin tone)
 APPEARANCE_FORM_URL = (
@@ -1142,7 +1142,7 @@ def main():
       hair color, and skin tone in-terminal. Derives a seasonal color palette.
 
     Stage 2: MBTI Personality
-      Prompts the user to take the MBTI test (opens mindprofile.co) then enter
+      Prompts the user to take the MBTI test (opens 16personalities.com) then enter
       their 4-letter type. Merges both profiles into a combined query.
 
     Retrieval: Pure cosine similarity against ChromaDB product embeddings.
