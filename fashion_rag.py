@@ -180,6 +180,31 @@ VALID_SKIN_TONES = [
     "dark / deep", "ebony / rich black",
 ]
 
+# Gender options — inclusive, mirrors what will be added to the Google Form.
+# Used to filter and personalise clothing recommendations.
+VALID_GENDER_OPTIONS = [
+    "Woman",
+    "Man",
+    "Non-binary",
+    "Genderfluid",
+    "Agender",
+    "Prefer not to say",
+    "Other / Self-describe",
+]
+
+# Maps each gender option to the product dataset's gender field values.
+# Non-binary / fluid / agender users get recommendations from all categories
+# so they aren't artificially limited to one side of the catalog.
+GENDER_TO_DATASET = {
+    "Woman":               ["Female"],
+    "Man":                 ["Male"],
+    "Non-binary":          ["Female", "Male", "Unisex"],
+    "Genderfluid":         ["Female", "Male", "Unisex"],
+    "Agender":             ["Female", "Male", "Unisex"],
+    "Prefer not to say":   ["Female", "Male", "Unisex"],
+    "Other / Self-describe": ["Female", "Male", "Unisex"],
+}
+
 # Normalise skin tone input to the keys used in SKIN_PROFILE
 def _normalise_skin(raw: str) -> str:
     raw = raw.lower().strip()
@@ -268,6 +293,25 @@ def collect_appearance_profile() -> dict:
     print("Your physical features help us identify which clothing colors")
     print("will complement you most — based on seasonal color analysis.\n")
 
+    # ── Gender ─────────────────────────────────────────────────────────────
+    print("Gender (helps personalise clothing categories):")
+    for i, opt in enumerate(VALID_GENDER_OPTIONS, 1):
+        print(f"  {i}. {opt}")
+    while True:
+        raw = input("\nEnter your gender (name or number): ").strip()
+        if raw.isdigit() and 1 <= int(raw) <= len(VALID_GENDER_OPTIONS):
+            gender = VALID_GENDER_OPTIONS[int(raw) - 1]
+            break
+        matches = [g for g in VALID_GENDER_OPTIONS if g.lower() == raw.lower()]
+        if matches:
+            gender = matches[0]
+            break
+        # Allow free-text self-description
+        if raw:
+            gender = raw
+            break
+        print(f"  Please enter a number 1–{len(VALID_GENDER_OPTIONS)} or type your gender.")
+
     # ── Eye Color ──────────────────────────────────────────────────────────
     print("Eye Color options:")
     for i, opt in enumerate(VALID_EYE_COLORS, 1):
@@ -316,6 +360,7 @@ def collect_appearance_profile() -> dict:
     style_note = SEASON_STYLE_NOTES[season]
 
     print(f"\n{'─'*60}")
+    print(f"  Gender               : {gender}")
     print(f"  Your Seasonal Palette: {season.upper()}")
     print(f"  Best colors for you  : {', '.join(colors[:6])}")
     print(f"  Style note           : {style_note}")
@@ -325,6 +370,7 @@ def collect_appearance_profile() -> dict:
         "eye_color":  eye_color,
         "hair_color": hair_color,
         "skin_tone":  skin_tone,
+        "gender":     gender,
         "season":     season,
         "colors":     colors,
         "style_note": style_note,
@@ -784,14 +830,29 @@ def build_combined_query(
         raise ValueError(f"Unknown MBTI type: {mbti_type}. Valid types: {VALID_MBTI_TYPES}")
 
     mbti = MBTI_FASHION_MAP[mbti_type]
-    season   = appearance["season"]
-    colors   = appearance["colors"]
+    season     = appearance["season"]
+    colors     = appearance["colors"]
     style_note = appearance["style_note"]
+    gender     = appearance.get("gender", "")
+
+    # Build a gender-aware style phrase for the query
+    gender_phrase = ""
+    if gender:
+        dataset_genders = GENDER_TO_DATASET.get(gender, ["Female", "Male", "Unisex"])
+        if len(dataset_genders) == 1:
+            gender_phrase = f"I identify as {gender} and prefer {dataset_genders[0].lower()} clothing."
+        else:
+            gender_phrase = (
+                f"I identify as {gender} and am open to clothing from any gender category "
+                "including women's, men's, and unisex styles."
+            )
 
     # Merge color lists: appearance palette takes priority, MBTI colors add variety
     all_colors = colors[:4] + [c for c in mbti["colors"] if c not in colors][:2]
 
     query_parts = [
+        # Gender context
+        gender_phrase,
         # Appearance-driven color context
         f"My seasonal color palette is {season}, so I look best in "
         f"{', '.join(colors[:5])}.",
@@ -803,6 +864,9 @@ def build_combined_query(
         f"I am looking for {', '.join(mbti['categories'])}.",
         mbti["keywords"],
     ]
+
+    # Filter out empty strings before joining
+    query_parts = [p for p in query_parts if p.strip()]
 
     if extra_input.strip():
         query_parts.append(f"Additional preference: {extra_input.strip()}")

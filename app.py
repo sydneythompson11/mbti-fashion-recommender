@@ -75,6 +75,8 @@ from fashion_rag import (
     VALID_EYE_COLORS,
     VALID_HAIR_COLORS,
     VALID_SKIN_TONES,
+    VALID_GENDER_OPTIONS,
+    GENDER_TO_DATASET,
     derive_season,
     build_combined_query,
     build_mbti_query,
@@ -351,17 +353,32 @@ def retrieve_top_products(
     product_embeddings: np.ndarray,
     model: SentenceTransformer,
     top_k: int = TOP_K,
+    gender: str = "",
 ) -> list[dict]:
-    """Rank products by cosine similarity to the query embedding."""
+    """Rank products by cosine similarity to the query embedding.
+    If gender is provided, products matching that gender are boosted to the top.
+    Non-binary / fluid / agender users see all products ranked by similarity.
+    """
+    # Determine which dataset gender values to boost
+    dataset_genders = GENDER_TO_DATASET.get(gender, [])
+    boost_all = len(dataset_genders) > 1 or not dataset_genders
+
     q_emb = model.encode(query, convert_to_numpy=True)
     scores = [cosine_sim(q_emb, product_embeddings[i]) for i in range(len(products))]
-    ranked = sorted(zip(scores, products), key=lambda x: x[0], reverse=True)
-    results = []
-    for score, product in ranked[:top_k]:
+
+    ranked = []
+    for score, product in zip(scores, products):
         p = dict(product)
         p["similarity"] = round(score, 4)
-        results.append(p)
-    return results
+        # Boost products that match the user's gender preference
+        prod_gender = p.get("gender", "").strip()
+        if not boost_all and dataset_genders:
+            if prod_gender in dataset_genders:
+                p["similarity"] = round(min(score + 0.05, 1.0), 4)
+        ranked.append(p)
+
+    ranked.sort(key=lambda x: x["similarity"], reverse=True)
+    return ranked[:top_k]
 
 
 # =============================================================================
@@ -492,6 +509,11 @@ def render_profile_summary(appearance: dict, mbti_type: str):
         <div style="display:flex;gap:2rem;flex-wrap:wrap">
             <div>
                 <div style="font-size:0.75rem;color:#9e8aad;text-transform:uppercase;
+                            letter-spacing:0.05em;margin-bottom:0.3rem">Gender</div>
+                <span style="font-weight:600;color:#2c1a4e">{appearance.get("gender","")}</span>
+            </div>
+            <div>
+                <div style="font-size:0.75rem;color:#9e8aad;text-transform:uppercase;
                             letter-spacing:0.05em;margin-bottom:0.3rem">Seasonal Palette</div>
                 <span class="season-badge {season_class}">{season}</span>
                 <div style="margin-top:0.5rem">{color_swatches}</div>
@@ -520,11 +542,65 @@ def render_profile_summary(appearance: dict, mbti_type: str):
 
 def step_appearance():
     render_steps(1)
-    st.markdown("### Step 1 — What do you look like?")
+    st.markdown("### Step 1 — Tell us about yourself")
     st.markdown(
         f"These questions match the [Google Form]({APPEARANCE_FORM}) "
-        "and help us find colors that complement your features."
+        "and help us find colors and styles that complement you."
     )
+
+    # ── Gender ────────────────────────────────────────────────────────────
+    st.markdown("#### 🧑 Gender Identity")
+    st.caption("This helps us personalise which clothing categories we recommend. All options are welcome.")
+
+    gender_cols = st.columns(4)
+    # First 4 options in a row
+    selected_gender = st.session_state.get("_gender_pick", VALID_GENDER_OPTIONS[0])
+
+    for i, opt in enumerate(VALID_GENDER_OPTIONS[:-1]):  # all except "Other"
+        col = gender_cols[i % 4]
+        with col:
+            is_selected = selected_gender == opt
+            btn_style = (
+                "background:#2c1a4e;color:white;border-radius:8px;"
+                "padding:0.4rem 0.8rem;border:none;width:100%;cursor:pointer;"
+                "font-size:0.9rem;margin-bottom:0.4rem"
+                if is_selected else
+                "background:#f3e8ff;color:#2c1a4e;border-radius:8px;"
+                "padding:0.4rem 0.8rem;border:1px solid #d8b4fe;width:100%;cursor:pointer;"
+                "font-size:0.9rem;margin-bottom:0.4rem"
+            )
+            if st.button(opt, key=f"gender_{i}", use_container_width=True):
+                st.session_state["_gender_pick"] = opt
+                st.rerun()
+
+    # Self-describe option
+    with st.expander("✏️ Self-describe or prefer not to say"):
+        custom = st.text_input(
+            "Enter your gender identity",
+            value="" if selected_gender in VALID_GENDER_OPTIONS else selected_gender,
+            placeholder="e.g. Two-spirit, Demi-girl, Prefer not to say...",
+            key="gender_custom",
+        )
+        if custom.strip():
+            if st.button("Use this", key="gender_custom_btn"):
+                st.session_state["_gender_pick"] = custom.strip()
+                st.rerun()
+
+    gender = st.session_state.get("_gender_pick", VALID_GENDER_OPTIONS[0])
+
+    # Show what categories this unlocks
+    dataset_genders = GENDER_TO_DATASET.get(gender, ["Female", "Male", "Unisex"])
+    if len(dataset_genders) == 1:
+        scope_note = f"We'll show you **{dataset_genders[0].lower()}** clothing."
+    else:
+        scope_note = "We'll show you clothing from **all categories** — women's, men's, and unisex."
+    st.caption(f"✓ {scope_note}")
+
+    st.markdown("---")
+
+    # ── Appearance questions ───────────────────────────────────────────────
+    st.markdown("#### 🎨 Your Features")
+    st.caption("Used for seasonal color analysis — finding shades that complement your natural coloring.")
 
     col1, col2, col3 = st.columns(3)
 
@@ -555,7 +631,7 @@ def step_appearance():
         )
         skin = VALID_SKIN_TONES[skin_idx]
 
-    # Preview the derived season live
+    # Live palette preview
     season = derive_season(eye.lower(), hair.lower(), skin)
     colors = SEASON_COLORS[season]
     style_note = SEASON_STYLE_NOTES[season]
@@ -581,6 +657,7 @@ def step_appearance():
             "eye_color":  eye.lower(),
             "hair_color": hair.lower(),
             "skin_tone":  skin,
+            "gender":     gender,
             "season":     season,
             "colors":     colors,
             "style_note": style_note,
@@ -677,7 +754,9 @@ def step_closet(products: list[dict], product_embeddings: np.ndarray,
 
         query = build_combined_query(mbti_type, appearance, extra_input=extra)
         recommended = retrieve_top_products(
-            query, products, product_embeddings, model, top_k=TOP_K
+            query, products, product_embeddings, model,
+            top_k=TOP_K,
+            gender=appearance.get("gender", ""),
         )
         st.session_state.recommended = recommended
         st.session_state.last_query  = query_key
