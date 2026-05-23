@@ -225,11 +225,10 @@ def _normalise_skin(raw: str) -> str:
 
 def derive_season(eye_color: str, hair_color: str, skin_tone: str) -> str:
     """
-    Derive a seasonal color palette from the three appearance inputs.
+    Derive a seasonal color palette using weighted signals.
 
-    Uses a majority-vote approach across the warmth signals from eye, hair,
-    and skin, then combines with the depth signal from hair and skin to
-    look up the season in SEASON_FROM_SIGNALS.
+    Weighting: skin tone (3) > hair color (2) > eye color (1).
+    Skin tone is the strongest indicator of undertone; eyes are the weakest.
 
     Returns one of: "Spring", "Summer", "Autumn", "Winter"
     """
@@ -238,27 +237,25 @@ def derive_season(eye_color: str, hair_color: str, skin_tone: str) -> str:
     skin_k = _normalise_skin(skin_tone)
     skin_p = SKIN_PROFILE.get(skin_k, {"warmth": "neutral", "depth": "medium"})
 
-    # Majority vote on warmth across all three signals
-    warmth_votes = [eye_w, hair_p["warmth"], skin_p["warmth"]]
-    warm_count = warmth_votes.count("warm")
-    cool_count = warmth_votes.count("cool")
-    if warm_count > cool_count:
-        warmth = "warm"
-    elif cool_count > warm_count:
-        warmth = "cool"
-    else:
-        warmth = "neutral"
+    # Weighted warmth: skin=3, hair=2, eye=1
+    warmth_score = 0
+    for signal, weight in [(skin_p["warmth"], 3), (hair_p["warmth"], 2), (eye_w, 1)]:
+        if signal == "warm":
+            warmth_score += weight
+        elif signal == "cool":
+            warmth_score -= weight
 
-    # Depth from hair + skin (skin carries more weight for clothing)
-    depth_votes = [hair_p["depth"], skin_p["depth"], skin_p["depth"]]
-    light_count = depth_votes.count("light")
-    deep_count  = depth_votes.count("deep")
-    if light_count > deep_count:
-        depth = "light"
-    elif deep_count > light_count:
-        depth = "deep"
-    else:
-        depth = "medium"
+    warmth = "warm" if warmth_score > 0 else ("cool" if warmth_score < 0 else "neutral")
+
+    # Weighted depth: skin=2, hair=1
+    depth_score = 0
+    for signal, weight in [(skin_p["depth"], 2), (hair_p["depth"], 1)]:
+        if signal == "light":
+            depth_score += weight
+        elif signal == "deep":
+            depth_score -= weight
+
+    depth = "light" if depth_score > 0 else ("deep" if depth_score < 0 else "medium")
 
     return SEASON_FROM_SIGNALS.get((warmth, depth), "Autumn")
 

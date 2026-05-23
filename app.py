@@ -42,7 +42,8 @@ SCRAPED_CSV       = BASE_DIR / "data" / "scraped_products.csv"
 BASE_DATASET_CSV  = BASE_DIR / "data" / "fashion_data_2018_2022.csv"
 CHROMA_DB_PATH    = str(BASE_DIR / "data" / "fashion_chroma_db")
 EMBEDDING_MODEL   = "all-MiniLM-L6-v2"
-TOP_K             = 12   # products to show in the closet grid
+TOP_K             = 12   # products per page in the closet grid
+CANDIDATE_POOL    = 80   # top candidates retrieved before sampling (larger = more variety)
 
 # ── External links ────────────────────────────────────────────────────────────
 MBTI_TEST_URL     = "https://www.16personalities.com"
@@ -624,31 +625,75 @@ def render_product_card(product: dict, image_url: str) -> str:
 
 
 def render_closet_grid(products: list[dict]):
-    """Render the full closet grid — 4 columns, images + shop links."""
+    """
+    Render the full closet grid — 4 columns, paginated in groups of TOP_K.
+    All matched products are shown; users page through them.
+    """
     if not products:
         st.info("No products found. Run scraper.py first to populate your data.")
         return
 
-    st.markdown('<div class="section-title">✨ Your Personalised Closet</div>',
-                unsafe_allow_html=True)
+    total = len(products)
+    page_size = TOP_K
 
-    # Fetch all images in parallel using st.spinner
+    # Pagination state
+    if "closet_page" not in st.session_state:
+        st.session_state.closet_page = 0
+
+    total_pages = max(1, (total + page_size - 1) // page_size)
+    # Clamp page to valid range (e.g. after filters reduce results)
+    st.session_state.closet_page = min(st.session_state.closet_page, total_pages - 1)
+    page = st.session_state.closet_page
+
+    start = page * page_size
+    end   = min(start + page_size, total)
+    page_products = products[start:end]
+
+    st.markdown(
+        f'<div class="section-title">✨ Your Personalised Closet'
+        f'<span style="font-size:1rem;font-weight:400;color:#9e8aad;margin-left:1rem">'
+        f'{total} items · page {page + 1} of {total_pages}</span></div>',
+        unsafe_allow_html=True,
+    )
+
+    # Fetch images for this page only
     with st.spinner("Loading your closet..."):
-        image_urls = []
-        for p in products:
-            img = fetch_shopify_image(p.get("product_url", ""), p.get("brand", ""))
-            image_urls.append(img)
+        image_urls = [
+            fetch_shopify_image(p.get("product_url", ""), p.get("brand", ""))
+            for p in page_products
+        ]
 
-    # Render 4-column grid
+    # 4-column grid
     cols_per_row = 4
-    for row_start in range(0, len(products), cols_per_row):
-        row_products = products[row_start:row_start + cols_per_row]
+    for row_start in range(0, len(page_products), cols_per_row):
+        row_products = page_products[row_start:row_start + cols_per_row]
         row_images   = image_urls[row_start:row_start + cols_per_row]
         cols = st.columns(cols_per_row)
         for col, product, img_url in zip(cols, row_products, row_images):
             with col:
                 st.markdown(render_product_card(product, img_url),
                             unsafe_allow_html=True)
+
+    # Pagination controls
+    if total_pages > 1:
+        st.markdown("<br>", unsafe_allow_html=True)
+        pcol1, pcol2, pcol3 = st.columns([1, 2, 1])
+        with pcol1:
+            if page > 0:
+                if st.button("← Previous", use_container_width=True):
+                    st.session_state.closet_page -= 1
+                    st.rerun()
+        with pcol2:
+            st.markdown(
+                f"<div style='text-align:center;color:#9e8aad;padding-top:0.5rem'>"
+                f"Page {page + 1} of {total_pages}</div>",
+                unsafe_allow_html=True,
+            )
+        with pcol3:
+            if page < total_pages - 1:
+                if st.button("Next →", use_container_width=True):
+                    st.session_state.closet_page += 1
+                    st.rerun()
 
 
 def render_profile_summary(appearance: dict, mbti_type: str):
@@ -735,8 +780,10 @@ def step_appearance():
     st.caption("This helps us personalise which clothing categories we recommend. All options are welcome.")
 
     gender_cols = st.columns(4)
-    # First 4 options in a row
-    selected_gender = st.session_state.get("_gender_pick", VALID_GENDER_OPTIONS[0])
+    # Default to "Woman" so something is always visually selected on first load
+    if "_gender_pick" not in st.session_state:
+        st.session_state["_gender_pick"] = "Woman"
+    selected_gender = st.session_state["_gender_pick"]
 
     for i, opt in enumerate(VALID_GENDER_OPTIONS[:-1]):  # all except "Other"
         col = gender_cols[i % 4]
@@ -824,9 +871,69 @@ def step_appearance():
     }
     bg = season_colors_map.get(season, "#f3e8ff")
 
+    # ── Manual palette override ────────────────────────────────────────────
+    st.markdown("#### 🎨 Your Color Palette")
+
+    with st.expander("ℹ️ How is my palette determined?", expanded=False):
+        st.markdown("""
+**Seasonal Color Analysis** groups people into 4 palettes based on their
+natural coloring:
+
+| Season | Undertone | Depth | Best colors |
+|--------|-----------|-------|-------------|
+| 🌸 Spring | Warm | Light/bright | Peach, coral, camel, warm green |
+| ☁️ Summer | Cool | Light/muted | Lavender, powder blue, rose, sage |
+| 🍂 Autumn | Warm | Deep/muted | Rust, olive, mustard, terracotta |
+| ❄️ Winter | Cool | Deep/bright | Black, navy, ruby red, emerald |
+
+**How we calculate yours:**
+We look at three signals — skin tone (strongest), hair color (medium),
+and eye color (weakest) — and combine them using weighted scoring.
+
+**Why it might be off:**
+- Screen colors vary between devices
+- Lighting affects how you perceive your own coloring
+- Hair may be dyed rather than natural
+- Undertones are subtle and hard to self-identify digitally
+
+If the result doesn't feel right, override it below or visit
+[colorwise.me](https://colorwise.me) for a more detailed analysis.
+        """)
+
+    # Check if user wants to override
+    override = st.checkbox(
+        "🔄 Override — I know my palette (or used colorwise.me)",
+        key="palette_override",
+    )
+
+    if override:
+        st.markdown(
+            "Not sure? Take the detailed test at "
+            "[colorwise.me](https://colorwise.me) — it's free and more accurate."
+        )
+        manual_season = st.radio(
+            "Choose your seasonal palette:",
+            options=["Spring", "Summer", "Autumn", "Winter"],
+            horizontal=True,
+            key="manual_season",
+            captions=[
+                "Warm + light/bright",
+                "Cool + light/muted",
+                "Warm + deep/muted",
+                "Cool + deep/bright",
+            ],
+        )
+        season     = manual_season
+        colors     = SEASON_COLORS[season]
+        style_note = SEASON_STYLE_NOTES[season]
+        bg         = season_colors_map.get(season, "#f3e8ff")
+        st.caption(f"✓ Using your chosen palette: **{season}**")
+
     st.markdown(f"""
-    <div style="background:{bg};border-radius:12px;padding:1rem 1.5rem;margin:1rem 0">
-        <strong>Your Seasonal Palette: {season}</strong><br>
+    <div style="background:{bg};border-radius:12px;padding:1rem 1.5rem;margin:0.5rem 0">
+        <strong>{'Your' if not override else 'Selected'} Seasonal Palette: {season}</strong>
+        {'<span style="font-size:0.8rem;color:#888"> (auto-detected)</span>' if not override else ''}
+        <br>
         <span style="font-size:0.9rem;color:#555">
             Best colors: {', '.join(colors[:6])}<br>
             {style_note}
@@ -982,6 +1089,7 @@ def step_closet(products: list[dict], product_embeddings: np.ndarray,
         )
         st.session_state.recommended = recommended
         st.session_state.last_query  = query_key
+        st.session_state.closet_page = 0  # reset to first page on new results
 
     recommended = st.session_state.get("recommended", [])
 
