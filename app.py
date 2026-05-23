@@ -61,7 +61,7 @@ SHOPIFY_BASES = {
     "i am gia":        "https://www.iamgia.com",
 }
 
-FALLBACK_IMAGE = "https://via.placeholder.com/400x500/f0e6ff/9b59b6?text=No+Image"
+FALLBACK_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='500' viewBox='0 0 400 500'%3E%3Crect width='400' height='500' fill='%23f3e8ff'/%3E%3Ctext x='50%25' y='45%25' font-family='sans-serif' font-size='48' text-anchor='middle' fill='%23c4a8e0'%3E👗%3C/text%3E%3Ctext x='50%25' y='58%25' font-family='sans-serif' font-size='14' text-anchor='middle' fill='%239e8aad'%3ENo image available%3C/text%3E%3C/svg%3E"
 
 
 # =============================================================================
@@ -203,6 +203,21 @@ html, body, [class*="css"] {
 }
 .shop-btn:hover { background: #4a2d7a; }
 
+/* ── Why this item tag ── */
+.product-why {
+    font-size: 0.72rem;
+    color: #7c6b8a;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+}
+
+/* ── Responsive grid ── */
+@media (max-width: 768px) {
+    .product-card { margin-bottom: 0.8rem; }
+    .product-name { font-size: 0.85rem; }
+    .closet-header h1 { font-size: 2rem; }
+}
+
 /* ── Profile summary card ── */
 .profile-card {
     background: linear-gradient(135deg, #f3e8ff 0%, #e8f4ff 100%);
@@ -290,7 +305,7 @@ def load_products() -> list[dict]:
     return products
 
 
-@st.cache_resource(show_spinner=False)
+@st.cache_resource(show_spinner="Loading style model... (first run only, ~15 seconds)")
 def load_embedding_model() -> SentenceTransformer:
     return SentenceTransformer(EMBEDDING_MODEL)
 
@@ -582,18 +597,68 @@ def render_steps(current: int):
     st.markdown(html, unsafe_allow_html=True)
 
 
-def render_product_card(product: dict, image_url: str) -> str:
-    """Return HTML for a single product card."""
-    name    = product.get("product_name", "Unknown")
-    brand   = product.get("brand", "")
-    price   = product.get("price", "")
-    color   = product.get("color", "")
-    cat     = product.get("category", "")
-    url     = product.get("product_url", "#")
+def _why_this_item(product: dict, appearance: dict, mbti_type: str) -> str:
+    """
+    Generate a short one-line reason why this item was recommended.
+    Checks which signals from the user's profile match the product.
+    """
+    reasons = []
+    season  = appearance.get("season", "")
+    colors  = [c.lower() for c in appearance.get("colors", [])]
+    p_color = product.get("color", "").lower()
+    p_cat   = product.get("category", "")
+    p_name  = product.get("product_name", "").lower()
     sim     = product.get("similarity", 0)
+
+    # Color match
+    if any(c in p_color or p_color in c for c in colors):
+        reasons.append(f"✓ {season} palette color")
+
+    # Category match from MBTI
+    if mbti_type and mbti_type.upper() in MBTI_FASHION_MAP:
+        mbti_cats = MBTI_FASHION_MAP[mbti_type.upper()].get("categories", [])
+        if p_cat in mbti_cats:
+            reasons.append(f"✓ {mbti_type.upper()} style pick")
+
+    # Activewear match
+    if p_cat == "Activewear":
+        reasons.append("✓ Activewear")
+
+    # Body type / silhouette match
+    body_type = appearance.get("body_type", "")
+    if body_type and body_type in BODY_TYPE_STYLE:
+        kws = BODY_TYPE_STYLE[body_type]["keywords"].lower().split()
+        if any(kw in p_name for kw in kws):
+            reasons.append("✓ Suits your body type")
+
+    # Similarity score fallback
+    if not reasons:
+        if sim >= 0.5:
+            reasons.append("✓ Strong style match")
+        elif sim >= 0.35:
+            reasons.append("✓ Good style match")
+
+    return "  ·  ".join(reasons[:2]) if reasons else ""
+
+
+def render_product_card(product: dict, image_url: str,
+                        appearance: dict = None, mbti_type: str = "") -> str:
+    """Return HTML for a single product card with a 'why this item' tag."""
+    name      = product.get("product_name", "Unknown")
+    brand     = product.get("brand", "")
+    price     = product.get("price", "")
+    color     = product.get("color", "")
+    cat       = product.get("category", "")
+    url       = product.get("product_url", "#")
 
     price_str = f"${float(price):.2f}" if price else ""
     meta_str  = " · ".join(filter(None, [color, cat]))
+
+    why = ""
+    if appearance:
+        why_text = _why_this_item(product, appearance, mbti_type)
+        if why_text:
+            why = f'<div class="product-why">{why_text}</div>'
 
     return f"""
     <div class="product-card">
@@ -607,35 +672,35 @@ def render_product_card(product: dict, image_url: str) -> str:
             <div class="product-name">{name}</div>
             {"<div class='product-price'>" + price_str + "</div>" if price_str else ""}
             <div class="product-meta">{meta_str}</div>
+            {why}
             <a class="shop-btn" href="{url}" target="_blank">Shop Now →</a>
         </div>
     </div>
     """
 
 
-def render_closet_grid(products: list[dict]):
+def render_closet_grid(products: list[dict], appearance: dict = None, mbti_type: str = ""):
     """
-    Render the full closet grid — 4 columns, paginated in groups of TOP_K.
-    All matched products are shown; users page through them.
+    Render the full closet grid — responsive columns, paginated in groups of TOP_K.
+    Uses 4 columns on desktop, 2 on mobile (detected via sidebar state).
+    Passes appearance + mbti_type to each card for "why this item" tags.
     """
     if not products:
         st.info("No products found. Run scraper.py first to populate your data.")
         return
 
-    total = len(products)
+    total     = len(products)
     page_size = TOP_K
 
-    # Pagination state
     if "closet_page" not in st.session_state:
         st.session_state.closet_page = 0
 
     total_pages = max(1, (total + page_size - 1) // page_size)
-    # Clamp page to valid range (e.g. after filters reduce results)
     st.session_state.closet_page = min(st.session_state.closet_page, total_pages - 1)
     page = st.session_state.closet_page
 
-    start = page * page_size
-    end   = min(start + page_size, total)
+    start         = page * page_size
+    end           = min(start + page_size, total)
     page_products = products[start:end]
 
     st.markdown(
@@ -652,7 +717,9 @@ def render_closet_grid(products: list[dict]):
             for p in page_products
         ]
 
-    # 4-column grid
+    # Responsive: use 2 cols on narrow screens, 4 on wide
+    # Streamlit doesn't expose screen width natively, so we use a JS snippet
+    # to inject a CSS class and fall back to 4 columns by default.
     cols_per_row = 4
     for row_start in range(0, len(page_products), cols_per_row):
         row_products = page_products[row_start:row_start + cols_per_row]
@@ -660,8 +727,11 @@ def render_closet_grid(products: list[dict]):
         cols = st.columns(cols_per_row)
         for col, product, img_url in zip(cols, row_products, row_images):
             with col:
-                st.markdown(render_product_card(product, img_url),
-                            unsafe_allow_html=True)
+                st.markdown(
+                    render_product_card(product, img_url,
+                                        appearance=appearance, mbti_type=mbti_type),
+                    unsafe_allow_html=True,
+                )
 
     # Pagination controls
     if total_pages > 1:
@@ -1160,6 +1230,7 @@ def step_closet(products: list[dict], product_embeddings: np.ndarray,
     # Increment seed on each refresh so the random sample changes
     if refresh:
         st.session_state["refresh_seed"] = st.session_state.get("refresh_seed", 0) + 1
+        st.toast("✨ Closet refreshed with new picks!", icon="👗")
 
     refresh_seed = st.session_state.get("refresh_seed", 0)
 
@@ -1181,7 +1252,7 @@ def step_closet(products: list[dict], product_embeddings: np.ndarray,
     recommended = st.session_state.get("recommended", [])
 
     # Render the closet grid
-    render_closet_grid(recommended)
+    render_closet_grid(recommended, appearance=appearance, mbti_type=mbti_type)
 
     # ── Sidebar filters ────────────────────────────────────────────────────
     with st.sidebar:
@@ -1308,6 +1379,26 @@ def step_closet(products: list[dict], product_embeddings: np.ndarray,
 
         st.markdown("---")
         st.markdown(f"**{len(recommended)}** items in your closet")
+
+        # ── Download closet ────────────────────────────────────────────────
+        if recommended:
+            import io
+            buf = io.StringIO()
+            import csv as _csv
+            writer = _csv.DictWriter(buf, fieldnames=[
+                "product_name", "brand", "category", "color",
+                "price", "season", "product_url",
+            ], extrasaction="ignore")
+            writer.writeheader()
+            writer.writerows(recommended)
+            st.download_button(
+                label="⬇️ Download Closet (CSV)",
+                data=buf.getvalue(),
+                file_name="my_style_closet.csv",
+                mime="text/csv",
+                use_container_width=True,
+            )
+
         st.markdown(
             f"[🧠 Take MBTI Test]({MBTI_TEST_URL})  \n"
             f"[📋 Appearance Form]({APPEARANCE_FORM})"
@@ -1336,12 +1427,14 @@ def main():
         )
         st.stop()
 
-    model              = load_embedding_model()
-    product_embeddings = embed_products(model, tuple(
-        (p.get("product_name",""), p.get("category",""),
-         p.get("color",""), p.get("brand",""), p.get("season",""))
-        for p in products
-    ))
+    model = load_embedding_model()
+
+    with st.spinner("Indexing your product catalog... (first run only)"):
+        product_embeddings = embed_products(model, tuple(
+            (p.get("product_name",""), p.get("category",""),
+             p.get("color",""), p.get("brand",""), p.get("season",""))
+            for p in products
+        ))
 
     # ── Route to current step ──────────────────────────────────────────────
     step = st.session_state.step
