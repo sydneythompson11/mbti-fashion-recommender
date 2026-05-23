@@ -13,6 +13,7 @@ Run:
 import csv
 import json
 import os
+import random
 import re
 import time
 from pathlib import Path
@@ -22,6 +23,10 @@ import numpy as np
 import requests
 import streamlit as st
 from sentence_transformers import SentenceTransformer
+
+# How many top candidates to retrieve before randomly sampling for display.
+# This gives genuine variety on each refresh while still staying relevant.
+CANDIDATE_POOL = 40
 
 # ── Page config (must be first Streamlit call) ────────────────────────────────
 st.set_page_config(
@@ -347,8 +352,20 @@ def embed_products(_model: SentenceTransformer, product_tuples: tuple) -> np.nda
     return _model.encode(texts, convert_to_numpy=True, show_progress_bar=False)
 
 
-# Keywords that strongly signal a product is masculine-coded,
-# used to filter Unisex-tagged items for Woman users.
+# Swimwear keywords — these products are excluded from all recommendations
+_SWIMWEAR_SIGNALS = {
+    "swim", "swimwear", "swimsuit", "bikini", "bathing suit", "one-piece",
+    "board short", "rashguard", "wetsuit", "swim top", "swim bottom",
+    "swim trunk", "tankini",
+}
+
+
+def _is_swimwear(product_name: str) -> bool:
+    name = product_name.lower()
+    return any(sig in name for sig in _SWIMWEAR_SIGNALS)
+
+
+# Keywords that strongly signal a product is masculine-coded
 _MASCULINE_SIGNALS = {
     "polo", "button up", "button-up", "men's", "mens", "boyfriend",
     "dad hat", "a-frame hat", "rope hat", "vest", "5-pocket pant",
@@ -357,8 +374,7 @@ _MASCULINE_SIGNALS = {
     "versaknit", "alpha vest", "script hat", "x tech", "c tech",
 }
 
-# Keywords that strongly signal a product is feminine-coded,
-# used to filter Unisex-tagged items for Man users.
+# Keywords that strongly signal a product is feminine-coded
 _FEMININE_SIGNALS = {
     "women's", "womens", "dress", "skirt", "blouse", "cami", "crop top",
     "bodysuit", "bikini", "swimsuit", "floral", "lace", "ruffle",
@@ -378,36 +394,26 @@ def _is_feminine_coded(product_name: str) -> bool:
 
 
 def _passes_gender_filter(product: dict, target_gender: str) -> bool:
-    """
-    Return True if this product should be shown to a user with target_gender.
-
-    Rules:
-      - Female-tagged products: shown to Woman, hidden from Man
-      - Male-tagged products:   shown to Man, hidden from Woman
-      - Unisex-tagged products: shown to everyone UNLESS the product name
-        contains strong signals for the opposite gender
-    """
+    """Return True if this product should be shown to a user with target_gender."""
     prod_gender  = product.get("gender", "").strip()
     product_name = product.get("product_name", "")
 
     if target_gender == "Female":
-        if prod_gender == "Female":
-            return True
-        if prod_gender == "Male":
-            return False
-        # Unisex — exclude if it reads as masculine
+        if prod_gender == "Female":   return True
+        if prod_gender == "Male":     return False
         return not _is_masculine_coded(product_name)
 
     if target_gender == "Male":
-        if prod_gender == "Male":
-            return True
-        if prod_gender == "Female":
-            return False
-        # Unisex — exclude if it reads as feminine
+        if prod_gender == "Male":     return True
+        if prod_gender == "Female":   return False
         return not _is_feminine_coded(product_name)
 
-    # Any other value (Unisex target, non-binary, etc.) — include everything
-    return True
+    return True  # Non-binary / unspecified — include everything
+
+
+def _is_swimwear(product_name: str) -> bool:
+    name = product_name.lower()
+    return any(sig in name for sig in _SWIMWEAR_SIGNALS)
 
 
 def retrieve_top_products(
@@ -417,18 +423,18 @@ def retrieve_top_products(
     model: SentenceTransformer,
     top_k: int = TOP_K,
     gender: str = "",
+    refresh_seed: int = 0,
 ) -> list[dict]:
     """
-    Rank products by cosine similarity with smart gender filtering.
-
-    Woman  → Female products + Unisex products that aren't masculine-coded
-    Man    → Male products + Unisex products that aren't feminine-coded
-    Others → full catalog, ranked purely by similarity
-
-    Falls back to the full catalog if filtering leaves fewer than 4 results.
+    Retrieve clothing recommendations via cosine similarity with:
+      - Swimwear always excluded
+      - Hard gender filtering (Woman → Female/non-masculine-Unisex,
+        Man → Male/non-feminine-Unisex, others → full catalog)
+      - Variety on refresh: retrieves CANDIDATE_POOL top matches, then
+        randomly samples top_k from them using refresh_seed as the RNG seed.
+        Each new seed gives a genuinely different selection of items.
     """
     dataset_genders = GENDER_TO_DATASET.get(gender, [])
-    # Only apply filtering for single-gender selections (Woman / Man)
     apply_filter = len(dataset_genders) == 1
     target = dataset_genders[0] if apply_filter else ""
 
@@ -437,19 +443,56 @@ def retrieve_top_products(
 
     scored = []
     for score, product in zip(scores, products):
+        # Always skip swimwear
+        if _is_swimwear(product.get("product_name", "")):
+            continue
         p = dict(product)
         p["similarity"] = round(score, 4)
         scored.append(p)
 
+    # Gender filter
     if apply_filter and target:
         filtered = [p for p in scored if _passes_gender_filter(p, target)]
-        # Safety fallback — never show an empty closet
         pool = filtered if len(filtered) >= 4 else scored
     else:
         pool = scored
 
+    # Sort by similarity to get the best candidates
     pool.sort(key=lambda x: x["similarity"], reverse=True)
-    return pool[:top_k]
+
+    # Take a larger candidate pool, then randomly sample for variety on refresh.
+    # We weight the random sample by similarity so highly relevant items still
+    # appear more often, but lower-ranked items get a chance to surface.
+    candidates = pool[:CANDIDATE_POOL]
+    if len(candidates) <= top_k:
+        return candidates
+
+    # Use refresh_seed so each refresh click gives a different selection
+    rng = random.Random(refresh_seed)
+    # Weighted sampling: similarity score as weight
+    weights = [p["similarity"] for p in candidates]
+    selected = rng.choices(candidates, weights=weights, k=min(top_k * 2, len(candidates)))
+    # Deduplicate while preserving order
+    seen = set()
+    result = []
+    for p in selected:
+        pid = p.get("product_id", p.get("product_name", ""))
+        if pid not in seen:
+            seen.add(pid)
+            result.append(p)
+        if len(result) == top_k:
+            break
+    # If we didn't get enough after dedup, pad from the top of the pool
+    if len(result) < top_k:
+        for p in candidates:
+            pid = p.get("product_id", p.get("product_name", ""))
+            if pid not in seen:
+                seen.add(pid)
+                result.append(p)
+            if len(result) == top_k:
+                break
+
+    return result
 
 
 # =============================================================================
@@ -851,6 +894,12 @@ def step_closet(products: list[dict], product_embeddings: np.ndarray,
     extra_val = st.session_state.get("extra_pref", "")
     query_key = f"{mbti_type}_{appearance['season']}_{extra_val}"
 
+    # Increment seed on each refresh so the random sample changes
+    if refresh:
+        st.session_state["refresh_seed"] = st.session_state.get("refresh_seed", 0) + 1
+
+    refresh_seed = st.session_state.get("refresh_seed", 0)
+
     if (
         "last_query" not in st.session_state
         or st.session_state.last_query != query_key
@@ -861,6 +910,7 @@ def step_closet(products: list[dict], product_embeddings: np.ndarray,
             query, products, product_embeddings, model,
             top_k=TOP_K,
             gender=appearance.get("gender", ""),
+            refresh_seed=refresh_seed,
         )
         st.session_state.recommended = recommended
         st.session_state.last_query  = query_key

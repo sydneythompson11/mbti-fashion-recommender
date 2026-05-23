@@ -177,24 +177,43 @@ def infer_age_group(product_name: str, description: str = "") -> str:
 def normalise_category(raw: str) -> str:
     """
     Map a raw product type string to one of the categories used in the
-    existing dataset: Dress, Shirt, Jacket, Jeans, Shorts, Skirt, Shoes, Blouse.
+    existing dataset: Dress, Shirt, Jacket, Jeans, Shorts, Skirt, Shoes,
+    Blouse, Activewear.
+    Returns None for swimwear so it can be filtered out at save time.
     Falls back to the raw value (title-cased) if no match.
     """
     raw_lower = raw.lower()
+
+    # Swimwear — return None so the caller can skip this product entirely
+    if any(w in raw_lower for w in [
+        "swim", "swimwear", "swimsuit", "bikini", "bathing suit",
+        "board short", "rashguard", "wetsuit", "one-piece",
+    ]):
+        return None
+
     mapping = {
-        "dress":    "Dress",   "dresses":   "Dress",
-        "top":      "Shirt",   "tops":      "Shirt",   "t-shirt": "Shirt",
-        "shirt":    "Shirt",   "shirts":    "Shirt",   "blouse":  "Blouse",
-        "jacket":   "Jacket",  "jackets":   "Jacket",  "coat":    "Jacket",
-        "coats":    "Jacket",  "blazer":    "Jacket",
-        "jeans":    "Jeans",   "denim":     "Jeans",
-        "trousers": "Jeans",   "pants":     "Jeans",   "leggings": "Jeans",
-        "shorts":   "Shorts",
-        "skirt":    "Skirt",   "skirts":    "Skirt",
-        "shoes":    "Shoes",   "sneakers":  "Shoes",   "boots":   "Shoes",
-        "heels":    "Shoes",   "sandals":   "Shoes",   "footwear": "Shoes",
-        "sweater":  "Shirt",   "hoodie":    "Shirt",   "sweatshirt": "Shirt",
-        "jumpsuit": "Dress",   "romper":    "Dress",
+        "dress":      "Dress",    "dresses":    "Dress",
+        "top":        "Shirt",    "tops":       "Shirt",    "t-shirt":   "Shirt",
+        "shirt":      "Shirt",    "shirts":     "Shirt",    "blouse":    "Blouse",
+        "jacket":     "Jacket",   "jackets":    "Jacket",   "coat":      "Jacket",
+        "coats":      "Jacket",   "blazer":     "Jacket",
+        "jeans":      "Jeans",    "denim":      "Jeans",
+        "trousers":   "Jeans",    "pants":      "Jeans",    "leggings":  "Activewear",
+        "shorts":     "Shorts",
+        "skirt":      "Skirt",    "skirts":     "Skirt",
+        "shoes":      "Shoes",    "sneakers":   "Shoes",    "boots":     "Shoes",
+        "heels":      "Shoes",    "sandals":    "Shoes",    "footwear":  "Shoes",
+        "sweater":    "Shirt",    "hoodie":     "Shirt",    "sweatshirt":"Shirt",
+        "jumpsuit":   "Dress",    "romper":     "Dress",
+        # Activewear categories
+        "activewear": "Activewear", "sportswear": "Activewear",
+        "sports bra": "Activewear", "sports top": "Activewear",
+        "training":   "Activewear", "workout":    "Activewear",
+        "yoga":       "Activewear", "gym":        "Activewear",
+        "compression":"Activewear", "performance":"Activewear",
+        "athletic":   "Activewear", "running":    "Activewear",
+        "cycling":    "Activewear", "tennis":     "Activewear",
+        "tights":     "Activewear", "biker short":"Activewear",
     }
     for key, val in mapping.items():
         if key in raw_lower:
@@ -265,6 +284,7 @@ def scrape_walmart(limit: int = 200) -> list[dict]:
 SHOPIFY_STORES = [
     # All stores below confirmed returning {"products":[...]} JSON — tested live.
 
+    # ── Fashion ───────────────────────────────────────────────────────────
     # Princess Polly — women's fashion, huge college-age audience
     {"base_url": "https://us.princesspolly.com",  "brand": "Princess Polly",  "gender_hint": "Female"},
     # Cuts Clothing — clean elevated basics, men's and women's
@@ -279,6 +299,28 @@ SHOPIFY_STORES = [
     {"base_url": "https://www.mnml.la",            "brand": "MNML",            "gender_hint": "Male"},
     # I AM GIA — edgy women's fashion, popular with young adults
     {"base_url": "https://www.iamgia.com",         "brand": "I AM GIA",        "gender_hint": "Female"},
+
+    # ── Women's Activewear ────────────────────────────────────────────────
+    # Alo Yoga — premium yoga + gym wear, women's focus
+    {"base_url": "https://aloyoga.com",            "brand": "Alo Yoga",        "gender_hint": "Female"},
+    # Buff Bunny — women's gym / bodybuilding apparel
+    {"base_url": "https://www.buffbunny.com",      "brand": "Buff Bunny",      "gender_hint": "Female"},
+    # Girlfriend Collective — sustainable women's activewear
+    {"base_url": "https://www.girlfriend.com",     "brand": "Girlfriend Collective", "gender_hint": "Female"},
+
+    # ── Men's Activewear ──────────────────────────────────────────────────
+    # NoBull — training shoes + apparel, men's and women's
+    {"base_url": "https://www.nobullproject.com",  "brand": "NoBull",          "gender_hint": "Unisex"},
+    # Hylete — men's performance training apparel
+    {"base_url": "https://www.hylete.com",         "brand": "Hylete",          "gender_hint": "Male"},
+    # Born Primitive — men's CrossFit / strength training apparel
+    {"base_url": "https://www.bornprimitive.com",  "brand": "Born Primitive",  "gender_hint": "Male"},
+
+    # ── Unisex Activewear ─────────────────────────────────────────────────
+    # Ryderwear — gym wear for all, bodybuilding focus
+    {"base_url": "https://www.ryderwear.com",      "brand": "Ryderwear",       "gender_hint": "Unisex"},
+    # 2XU — compression + performance sportswear, unisex
+    {"base_url": "https://www.2xu.com",            "brand": "2XU",             "gender_hint": "Unisex"},
 ]
 
 
@@ -377,11 +419,16 @@ def scrape_shopify_store(base_url: str, brand: str, gender_hint: str,
                 # Build a description string from title + type for inference helpers
                 desc = f"{title} {product_type}"
 
+                category = normalise_category(product_type or title)
+                # Skip swimwear entirely
+                if category is None:
+                    continue
+
                 products.append({
                     "product_id":       next_id(),
                     "product_name":     title,
                     "gender":           gender,
-                    "category":         normalise_category(product_type or title),
+                    "category":         category,
                     "pattern":          infer_pattern(desc),
                     "color":            color,
                     "age_group":        infer_age_group(desc),
