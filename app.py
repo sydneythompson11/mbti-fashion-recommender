@@ -822,32 +822,41 @@ def step_closet(products: list[dict], product_embeddings: np.ndarray,
 
     render_profile_summary(appearance, mbti_type)
 
-    # Optional refinement
-    with st.expander("🔍 Refine your recommendations", expanded=False):
-        extra = st.text_input(
-            "Any extra preferences?",
-            placeholder="e.g. casual summer, going out, work outfit...",
-            key="extra_pref",
-        )
-        col_refresh, col_back = st.columns([2, 1])
+    # ── Refinement controls — always visible, not buried in expander ──────
+    with st.container():
+        col_extra, col_refresh, col_back = st.columns([3, 1, 1])
+        with col_extra:
+            extra = st.text_input(
+                "✏️ Refine your recommendations",
+                placeholder="e.g. casual summer, going out, work outfit...",
+                key="extra_pref",
+                label_visibility="visible",
+            )
         with col_refresh:
-            refresh = st.button("✨ Refresh Closet", type="primary",
-                                use_container_width=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            refresh = st.button(
+                "✨ Refresh",
+                type="primary",
+                use_container_width=True,
+                key="refresh_btn",
+            )
         with col_back:
-            if st.button("← Change Profile", use_container_width=True):
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("← Change Profile", use_container_width=True, key="change_profile_btn"):
                 st.session_state.step = 1
                 st.rerun()
 
-    extra   = st.session_state.get("extra_pref", "")
-    refresh = st.session_state.get("_refresh_clicked", False)
-    st.session_state["_refresh_clicked"] = False
+    # ── Build query and retrieve products ─────────────────────────────────
+    # Re-run retrieval when: first load, extra text changed, or refresh clicked
+    extra_val = st.session_state.get("extra_pref", "")
+    query_key = f"{mbti_type}_{appearance['season']}_{extra_val}"
 
-    # Build query and retrieve products
-    query_key = f"{mbti_type}_{appearance['season']}_{extra}"
-    if "last_query" not in st.session_state or \
-       st.session_state.last_query != query_key or refresh:
-
-        query = build_combined_query(mbti_type, appearance, extra_input=extra)
+    if (
+        "last_query" not in st.session_state
+        or st.session_state.last_query != query_key
+        or refresh
+    ):
+        query = build_combined_query(mbti_type, appearance, extra_input=extra_val)
         recommended = retrieve_top_products(
             query, products, product_embeddings, model,
             top_k=TOP_K,
