@@ -24,9 +24,7 @@ import requests
 import streamlit as st
 from sentence_transformers import SentenceTransformer
 
-# How many top candidates to retrieve before randomly sampling for display.
-# This gives genuine variety on each refresh while still staying relevant.
-CANDIDATE_POOL = 40
+# How many top candidates to retrieve before shuffling for display variety.
 
 # ── Page config (must be first Streamlit call) ────────────────────────────────
 st.set_page_config(
@@ -42,8 +40,8 @@ SCRAPED_CSV       = BASE_DIR / "data" / "scraped_products.csv"
 BASE_DATASET_CSV  = BASE_DIR / "data" / "fashion_data_2018_2022.csv"
 CHROMA_DB_PATH    = str(BASE_DIR / "data" / "fashion_chroma_db")
 EMBEDDING_MODEL   = "all-MiniLM-L6-v2"
-TOP_K             = 12   # products per page in the closet grid
-CANDIDATE_POOL    = 80   # top candidates retrieved before sampling (larger = more variety)
+TOP_K          = 12   # products shown per page in the closet grid
+CANDIDATE_POOL = 80   # top similarity candidates before shuffle (variety on refresh)
 
 # ── External links ────────────────────────────────────────────────────────────
 MBTI_TEST_URL     = "https://www.16personalities.com"
@@ -490,18 +488,21 @@ def retrieve_top_products(
     products: list[dict],
     product_embeddings: np.ndarray,
     model: SentenceTransformer,
-    top_k: int = TOP_K,
     gender: str = "",
     refresh_seed: int = 0,
 ) -> list[dict]:
     """
-    Retrieve clothing recommendations via cosine similarity with:
-      - Swimwear always excluded
-      - Hard gender filtering (Woman → Female/non-masculine-Unisex,
-        Man → Male/non-feminine-Unisex, others → full catalog)
-      - Variety on refresh: retrieves CANDIDATE_POOL top matches, then
-        randomly samples top_k from them using refresh_seed as the RNG seed.
-        Each new seed gives a genuinely different selection of items.
+    Return ALL relevant products ranked by cosine similarity, after filtering.
+
+    - Blocked content (swimwear, bodysuits, intimates) always excluded
+    - Hard gender filter: Woman → Female + non-masculine Unisex only
+                          Man   → Male + non-feminine Unisex only
+                          Others → full catalog
+    - Top CANDIDATE_POOL items are retrieved by similarity, then lightly
+      shuffled using refresh_seed so each Refresh click surfaces different
+      items at the top while keeping the most relevant ones nearby.
+    - The full shuffled list is returned — render_closet_grid paginates it
+      12 per page, so users can browse everything.
     """
     dataset_genders = GENDER_TO_DATASET.get(gender, [])
     apply_filter = len(dataset_genders) == 1
@@ -510,58 +511,38 @@ def retrieve_top_products(
     q_emb  = model.encode(query, convert_to_numpy=True)
     scores = [cosine_sim(q_emb, product_embeddings[i]) for i in range(len(products))]
 
+    # Score and filter
     scored = []
     for score, product in zip(scores, products):
-        # Skip blocked content (swimwear, bodysuits, intimates, lingerie)
         if _is_blocked(product):
             continue
         p = dict(product)
         p["similarity"] = round(score, 4)
         scored.append(p)
 
-    # Gender filter
     if apply_filter and target:
         filtered = [p for p in scored if _passes_gender_filter(p, target)]
         pool = filtered if len(filtered) >= 4 else scored
     else:
         pool = scored
 
-    # Sort by similarity to get the best candidates
+    # Sort by similarity — best matches first
     pool.sort(key=lambda x: x["similarity"], reverse=True)
 
-    # Take a larger candidate pool, then randomly sample for variety on refresh.
-    # We weight the random sample by similarity so highly relevant items still
-    # appear more often, but lower-ranked items get a chance to surface.
+    # Take top CANDIDATE_POOL, then shuffle within similarity tiers for variety.
+    # Tier shuffle: split into groups of 8, shuffle within each group.
+    # This keeps highly relevant items near the top while varying the exact order.
     candidates = pool[:CANDIDATE_POOL]
-    if len(candidates) <= top_k:
-        return candidates
+    if refresh_seed > 0:
+        rng = random.Random(refresh_seed)
+        tier_size = 8
+        tiers = [candidates[i:i+tier_size] for i in range(0, len(candidates), tier_size)]
+        for tier in tiers:
+            rng.shuffle(tier)
+        candidates = [item for tier in tiers for item in tier]
 
-    # Use refresh_seed so each refresh click gives a different selection
-    rng = random.Random(refresh_seed)
-    # Weighted sampling: similarity score as weight
-    weights = [p["similarity"] for p in candidates]
-    selected = rng.choices(candidates, weights=weights, k=min(top_k * 2, len(candidates)))
-    # Deduplicate while preserving order
-    seen = set()
-    result = []
-    for p in selected:
-        pid = p.get("product_id", p.get("product_name", ""))
-        if pid not in seen:
-            seen.add(pid)
-            result.append(p)
-        if len(result) == top_k:
-            break
-    # If we didn't get enough after dedup, pad from the top of the pool
-    if len(result) < top_k:
-        for p in candidates:
-            pid = p.get("product_id", p.get("product_name", ""))
-            if pid not in seen:
-                seen.add(pid)
-                result.append(p)
-            if len(result) == top_k:
-                break
-
-    return result
+    # Return the full list — pagination happens in render_closet_grid
+    return candidates
 
 
 # =============================================================================
@@ -1083,7 +1064,6 @@ def step_closet(products: list[dict], product_embeddings: np.ndarray,
         query = build_combined_query(mbti_type, appearance, extra_input=extra_val)
         recommended = retrieve_top_products(
             query, products, product_embeddings, model,
-            top_k=TOP_K,
             gender=appearance.get("gender", ""),
             refresh_seed=refresh_seed,
         )
