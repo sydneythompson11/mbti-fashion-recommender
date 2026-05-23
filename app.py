@@ -81,6 +81,14 @@ from fashion_rag import (
     VALID_SKIN_TONES,
     VALID_GENDER_OPTIONS,
     GENDER_TO_DATASET,
+    VALID_BODY_TYPES,
+    VALID_HEIGHTS,
+    VALID_FACE_SHAPES,
+    VALID_HAIR_LENGTHS,
+    BODY_TYPE_STYLE,
+    HEIGHT_STYLE,
+    FACE_SHAPE_NECKLINE,
+    HAIR_LENGTH_STYLE,
     derive_season,
     build_combined_query,
     build_mbti_query,
@@ -722,6 +730,16 @@ def render_profile_summary(appearance: dict, mbti_type: str):
             </div>
             <div>
                 <div style="font-size:0.75rem;color:#9e8aad;text-transform:uppercase;
+                            letter-spacing:0.05em;margin-bottom:0.3rem">Body Type</div>
+                <span style="color:#2c1a4e">{appearance.get("body_type","—")}</span>
+            </div>
+            <div>
+                <div style="font-size:0.75rem;color:#9e8aad;text-transform:uppercase;
+                            letter-spacing:0.05em;margin-bottom:0.3rem">Height</div>
+                <span style="color:#2c1a4e">{appearance.get("height","—")}</span>
+            </div>
+            <div>
+                <div style="font-size:0.75rem;color:#9e8aad;text-transform:uppercase;
                             letter-spacing:0.05em;margin-bottom:0.3rem">Seasonal Palette</div>
                 <span class="season-badge {season_class}">{season}</span>
                 <div style="margin-top:0.5rem">{color_swatches}</div>
@@ -748,16 +766,21 @@ def render_profile_summary(appearance: dict, mbti_type: str):
 # Step 1 — Appearance Profile
 # =============================================================================
 
-def _save_appearance_and_advance(eye, hair, skin, gender, season, colors, style_note):
+def _save_appearance_and_advance(eye, hair, skin, gender, season, colors, style_note,
+                                  body_type="", height="", face_shape="", hair_length=""):
     """Save appearance profile to session state and move to step 2."""
     st.session_state.appearance = {
-        "eye_color":  eye.lower(),
-        "hair_color": hair.lower(),
-        "skin_tone":  skin,
-        "gender":     gender,
-        "season":     season,
-        "colors":     colors,
-        "style_note": style_note,
+        "eye_color":   eye.lower(),
+        "hair_color":  hair.lower(),
+        "skin_tone":   skin,
+        "gender":      gender,
+        "body_type":   body_type,
+        "height":      height,
+        "face_shape":  face_shape,
+        "hair_length": hair_length,
+        "season":      season,
+        "colors":      colors,
+        "style_note":  style_note,
     }
     st.session_state.step = 2
     st.rerun()
@@ -860,6 +883,62 @@ def step_appearance():
         )
         skin = VALID_SKIN_TONES[skin_idx]
 
+    st.markdown("---")
+
+    # ── Body Type, Height, Face Shape, Hair Length ─────────────────────────
+    st.markdown("#### 👤 Body & Style Traits")
+    st.caption(
+        "These help us recommend the right silhouettes, necklines, and proportions. "
+        "All fields are optional — skip any you'd rather not answer."
+    )
+
+    col_a, col_b = st.columns(2)
+
+    with col_a:
+        st.markdown("**Body Type**")
+        body_type = st.selectbox(
+            "Body type",
+            options=VALID_BODY_TYPES,
+            label_visibility="collapsed",
+            key="body_type_sel",
+        )
+
+        st.markdown("**Face Shape**")
+        st.caption("Affects neckline recommendations")
+        face_shape = st.selectbox(
+            "Face shape",
+            options=VALID_FACE_SHAPES,
+            label_visibility="collapsed",
+            key="face_shape_sel",
+        )
+
+    with col_b:
+        st.markdown("**Height**")
+        height = st.selectbox(
+            "Height",
+            options=VALID_HEIGHTS,
+            label_visibility="collapsed",
+            key="height_sel",
+        )
+
+        st.markdown("**Hair Length**")
+        st.caption("Affects neckline and collar visibility")
+        hair_length = st.selectbox(
+            "Hair length",
+            options=VALID_HAIR_LENGTHS,
+            label_visibility="collapsed",
+            key="hair_length_sel",
+        )
+
+    # Show a quick style tip based on selections
+    body_tip  = BODY_TYPE_STYLE.get(body_type, {}).get("note", "")
+    face_tip  = FACE_SHAPE_NECKLINE.get(face_shape, {}).get("note", "")
+    if body_tip or face_tip:
+        tips = []
+        if body_tip:   tips.append(f"**{body_type}:** {body_tip}")
+        if face_tip:   tips.append(f"**{face_shape} face:** {face_tip}")
+        st.info("  \n".join(tips))
+
     # Live palette preview
     season = derive_season(eye.lower(), hair.lower(), skin)
     colors = SEASON_COLORS[season]
@@ -946,14 +1025,22 @@ If the result doesn't feel right, override it below or visit
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("Continue to Personality →", type="primary",
                  use_container_width=True, key="continue_bottom"):
-        _save_appearance_and_advance(eye, hair, skin, gender, season, colors, style_note)
+        _save_appearance_and_advance(
+            eye, hair, skin, gender, season, colors, style_note,
+            body_type=body_type, height=height,
+            face_shape=face_shape, hair_length=hair_length,
+        )
 
     # Also fill the top shortcut placeholder now that we have all values
     top_btn_placeholder.empty()
     with top_btn_placeholder:
         if st.button("Continue to Personality →", type="primary",
                      use_container_width=True, key="continue_top"):
-            _save_appearance_and_advance(eye, hair, skin, gender, season, colors, style_note)
+            _save_appearance_and_advance(
+                eye, hair, skin, gender, season, colors, style_note,
+                body_type=body_type, height=height,
+                face_shape=face_shape, hair_length=hair_length,
+            )
 
 
 # =============================================================================

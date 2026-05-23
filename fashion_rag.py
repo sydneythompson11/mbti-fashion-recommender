@@ -205,6 +205,173 @@ GENDER_TO_DATASET = {
     "Other / Self-describe": ["Female", "Male", "Unisex"],
 }
 
+# =============================================================================
+# Additional Appearance Traits → Style Guidance
+# =============================================================================
+# These traits affect silhouette, neckline, and proportion choices.
+# Traits like eye shape, nose, and lips are intentionally excluded — they
+# affect makeup, not clothing, and including them would feel invasive.
+
+# ── Body Type ─────────────────────────────────────────────────────────────────
+VALID_BODY_TYPES = [
+    "Petite",
+    "Tall",
+    "Curvy / Hourglass",
+    "Athletic / Muscular",
+    "Straight / Rectangular",
+    "Plus Size",
+    "Pear / Triangle",
+    "Apple / Round",
+    "Prefer not to say",
+]
+
+BODY_TYPE_STYLE = {
+    "Petite": {
+        "keywords": "petite fitted cropped high-waist vertical lines monochrome",
+        "note": "fitted silhouettes, cropped tops, high-waisted bottoms, and vertical "
+                "lines to elongate the frame",
+    },
+    "Tall": {
+        "keywords": "tall maxi midi wide-leg bold patterns horizontal stripes oversized",
+        "note": "maxi and midi lengths, wide-leg trousers, bold patterns, and "
+                "oversized silhouettes that fill the frame",
+    },
+    "Curvy / Hourglass": {
+        "keywords": "hourglass wrap fitted waist-defining belted stretchy bodycon",
+        "note": "wrap styles, belted waists, and fitted pieces that define the waist",
+    },
+    "Athletic / Muscular": {
+        "keywords": "athletic structured feminine soft draped flowy A-line",
+        "note": "soft draping, A-line skirts, and flowy fabrics that add softness",
+    },
+    "Straight / Rectangular": {
+        "keywords": "rectangular peplum ruffles layered textured create curves",
+        "note": "peplum tops, ruffles, and layered pieces that create the illusion "
+                "of curves",
+    },
+    "Plus Size": {
+        "keywords": "plus size flattering wrap empire waist dark solid structured",
+        "note": "wrap styles, empire waists, structured fabrics, and solid colors "
+                "that flatter and support",
+    },
+    "Pear / Triangle": {
+        "keywords": "pear triangle A-line wide neck statement top dark bottom",
+        "note": "statement tops, wide necklines, and A-line skirts that balance "
+                "the silhouette",
+    },
+    "Apple / Round": {
+        "keywords": "apple round empire waist V-neck flowy tunic elongate",
+        "note": "V-necks, empire waists, and flowy tunics that elongate the torso",
+    },
+    "Prefer not to say": {
+        "keywords": "versatile comfortable well-fitting",
+        "note": "versatile, comfortable pieces",
+    },
+}
+
+# ── Height ────────────────────────────────────────────────────────────────────
+VALID_HEIGHTS = [
+    "Short (under 5'4\")",
+    "Average (5'4\" – 5'7\")",
+    "Tall (5'8\" and above)",
+]
+
+HEIGHT_STYLE = {
+    "Short (under 5'4\")": {
+        "keywords": "petite cropped high-waist vertical stripe monochrome elongating",
+        "note": "cropped styles, high-waisted cuts, and vertical patterns to "
+                "create the illusion of height",
+    },
+    "Average (5'4\" – 5'7\")": {
+        "keywords": "versatile any length midi knee-length proportional",
+        "note": "most silhouettes and lengths work well",
+    },
+    "Tall (5'8\" and above)": {
+        "keywords": "tall maxi full-length wide-leg oversized bold print",
+        "note": "full-length styles, wide-leg cuts, and bold prints that "
+                "complement a taller frame",
+    },
+}
+
+# ── Face Shape ────────────────────────────────────────────────────────────────
+# Face shape primarily affects neckline recommendations.
+VALID_FACE_SHAPES = [
+    "Oval",
+    "Round",
+    "Square / Angular",
+    "Heart",
+    "Oblong / Rectangle",
+    "Diamond",
+    "Not sure",
+]
+
+FACE_SHAPE_NECKLINE = {
+    "Oval": {
+        "keywords": "any neckline versatile balanced proportions",
+        "note": "most necklines work — oval faces are the most versatile",
+    },
+    "Round": {
+        "keywords": "V-neck deep neckline elongating vertical open collar",
+        "note": "V-necks and deep necklines that elongate and slim the face",
+    },
+    "Square / Angular": {
+        "keywords": "round neck scoop neck soft curved neckline off-shoulder",
+        "note": "round, scoop, and off-shoulder necklines that soften angular features",
+    },
+    "Heart": {
+        "keywords": "V-neck scoop sweetheart neckline balance wide jaw",
+        "note": "V-necks and scoop necklines that draw attention downward and "
+                "balance a wider forehead",
+    },
+    "Oblong / Rectangle": {
+        "keywords": "boat neck wide collar horizontal neckline crew neck",
+        "note": "boat necks, wide collars, and crew necks that add width and "
+                "break up the length",
+    },
+    "Diamond": {
+        "keywords": "off-shoulder wide neckline boat neck halter",
+        "note": "off-shoulder and wide necklines that broaden the shoulder line",
+    },
+    "Not sure": {
+        "keywords": "versatile neckline comfortable",
+        "note": "a variety of necklines",
+    },
+}
+
+# ── Hair Length ───────────────────────────────────────────────────────────────
+# Hair length affects neckline and collar visibility.
+VALID_HAIR_LENGTHS = [
+    "Short (above ears / pixie)",
+    "Short-medium (ear to chin / bob)",
+    "Medium (chin to shoulder)",
+    "Long (shoulder to mid-back)",
+    "Very long (below mid-back)",
+]
+
+HAIR_LENGTH_STYLE = {
+    "Short (above ears / pixie)": {
+        "keywords": "statement neckline open collar turtleneck visible neck",
+        "note": "statement necklines and open collars shine with short hair",
+    },
+    "Short-medium (ear to chin / bob)": {
+        "keywords": "boat neck off-shoulder collarbone neckline",
+        "note": "boat necks and off-shoulder styles complement a bob",
+    },
+    "Medium (chin to shoulder)": {
+        "keywords": "V-neck scoop versatile neckline",
+        "note": "most necklines work well with medium-length hair",
+    },
+    "Long (shoulder to mid-back)": {
+        "keywords": "deep V halter backless open back neckline",
+        "note": "deep V-necks, halters, and open-back styles show beautifully "
+                "with long hair",
+    },
+    "Very long (below mid-back)": {
+        "keywords": "backless halter deep V open back statement back",
+        "note": "backless and halter styles that let long hair be the focal point",
+    },
+}
+
 # Normalise skin tone input to the keys used in SKIN_PROFILE
 def _normalise_skin(raw: str) -> str:
     raw = raw.lower().strip()
@@ -356,21 +523,92 @@ def collect_appearance_profile() -> dict:
     colors = SEASON_COLORS[season]
     style_note = SEASON_STYLE_NOTES[season]
 
+    # ── Body Type ──────────────────────────────────────────────────────────
+    print("\nBody Type options:")
+    for i, opt in enumerate(VALID_BODY_TYPES, 1):
+        print(f"  {i}. {opt}")
+    while True:
+        raw = input("\nEnter your body type (name or number): ").strip()
+        if raw.isdigit() and 1 <= int(raw) <= len(VALID_BODY_TYPES):
+            body_type = VALID_BODY_TYPES[int(raw) - 1]
+            break
+        matches = [b for b in VALID_BODY_TYPES if b.lower() == raw.lower()]
+        if matches:
+            body_type = matches[0]
+            break
+        if raw:
+            body_type = raw
+            break
+        print(f"  Please enter a number 1–{len(VALID_BODY_TYPES)} or type your body type.")
+
+    # ── Height ─────────────────────────────────────────────────────────────
+    print("\nHeight options:")
+    for i, opt in enumerate(VALID_HEIGHTS, 1):
+        print(f"  {i}. {opt}")
+    while True:
+        raw = input("\nEnter your height (name or number): ").strip()
+        if raw.isdigit() and 1 <= int(raw) <= len(VALID_HEIGHTS):
+            height = VALID_HEIGHTS[int(raw) - 1]
+            break
+        matches = [h for h in VALID_HEIGHTS if h.lower() == raw.lower()]
+        if matches:
+            height = matches[0]
+            break
+        print(f"  Please enter a number 1–{len(VALID_HEIGHTS)}.")
+
+    # ── Face Shape ─────────────────────────────────────────────────────────
+    print("\nFace Shape options:")
+    for i, opt in enumerate(VALID_FACE_SHAPES, 1):
+        print(f"  {i}. {opt}")
+    while True:
+        raw = input("\nEnter your face shape (name or number): ").strip()
+        if raw.isdigit() and 1 <= int(raw) <= len(VALID_FACE_SHAPES):
+            face_shape = VALID_FACE_SHAPES[int(raw) - 1]
+            break
+        matches = [f for f in VALID_FACE_SHAPES if f.lower() == raw.lower()]
+        if matches:
+            face_shape = matches[0]
+            break
+        print(f"  Please enter a number 1–{len(VALID_FACE_SHAPES)}.")
+
+    # ── Hair Length ────────────────────────────────────────────────────────
+    print("\nHair Length options:")
+    for i, opt in enumerate(VALID_HAIR_LENGTHS, 1):
+        print(f"  {i}. {opt}")
+    while True:
+        raw = input("\nEnter your hair length (name or number): ").strip()
+        if raw.isdigit() and 1 <= int(raw) <= len(VALID_HAIR_LENGTHS):
+            hair_length = VALID_HAIR_LENGTHS[int(raw) - 1]
+            break
+        matches = [h for h in VALID_HAIR_LENGTHS if h.lower() == raw.lower()]
+        if matches:
+            hair_length = matches[0]
+            break
+        print(f"  Please enter a number 1–{len(VALID_HAIR_LENGTHS)}.")
+
     print(f"\n{'─'*60}")
     print(f"  Gender               : {gender}")
+    print(f"  Body Type            : {body_type}")
+    print(f"  Height               : {height}")
+    print(f"  Face Shape           : {face_shape}")
+    print(f"  Hair Length          : {hair_length}")
     print(f"  Your Seasonal Palette: {season.upper()}")
     print(f"  Best colors for you  : {', '.join(colors[:6])}")
     print(f"  Style note           : {style_note}")
     print(f"{'─'*60}\n")
 
     return {
-        "eye_color":  eye_color,
-        "hair_color": hair_color,
-        "skin_tone":  skin_tone,
-        "gender":     gender,
-        "season":     season,
-        "colors":     colors,
-        "style_note": style_note,
+        "eye_color":   eye_color,
+        "hair_color":  hair_color,
+        "skin_tone":   skin_tone,
+        "gender":      gender,
+        "body_type":   body_type,
+        "height":      height,
+        "face_shape":  face_shape,
+        "hair_length": hair_length,
+        "season":      season,
+        "colors":      colors,
+        "style_note":  style_note,
     }
 
 
@@ -826,13 +1064,13 @@ def build_combined_query(
     if mbti_type not in MBTI_FASHION_MAP:
         raise ValueError(f"Unknown MBTI type: {mbti_type}. Valid types: {VALID_MBTI_TYPES}")
 
-    mbti = MBTI_FASHION_MAP[mbti_type]
+    mbti       = MBTI_FASHION_MAP[mbti_type]
     season     = appearance["season"]
     colors     = appearance["colors"]
     style_note = appearance["style_note"]
     gender     = appearance.get("gender", "")
 
-    # Build a gender-aware style phrase for the query
+    # ── Gender phrase ──────────────────────────────────────────────────────
     gender_phrase = ""
     if gender:
         dataset_genders = GENDER_TO_DATASET.get(gender, ["Female", "Male", "Unisex"])
@@ -844,17 +1082,54 @@ def build_combined_query(
                 "including women's, men's, and unisex styles."
             )
 
-    # Merge color lists: appearance palette takes priority, MBTI colors add variety
+    # ── Body type phrase ───────────────────────────────────────────────────
+    body_type   = appearance.get("body_type", "")
+    body_phrase = ""
+    if body_type and body_type in BODY_TYPE_STYLE:
+        b = BODY_TYPE_STYLE[body_type]
+        body_phrase = (
+            f"My body type is {body_type}. I look best in {b['note']}. "
+            f"{b['keywords']}"
+        )
+
+    # ── Height phrase ──────────────────────────────────────────────────────
+    height      = appearance.get("height", "")
+    height_phrase = ""
+    if height and height in HEIGHT_STYLE:
+        h = HEIGHT_STYLE[height]
+        height_phrase = f"I am {height}. I suit {h['note']}. {h['keywords']}"
+
+    # ── Face shape phrase ──────────────────────────────────────────────────
+    face_shape   = appearance.get("face_shape", "")
+    face_phrase  = ""
+    if face_shape and face_shape in FACE_SHAPE_NECKLINE:
+        f = FACE_SHAPE_NECKLINE[face_shape]
+        face_phrase = (
+            f"My face shape is {face_shape}. I suit {f['note']}. "
+            f"{f['keywords']}"
+        )
+
+    # ── Hair length phrase ─────────────────────────────────────────────────
+    hair_length   = appearance.get("hair_length", "")
+    hair_len_phrase = ""
+    if hair_length and hair_length in HAIR_LENGTH_STYLE:
+        hl = HAIR_LENGTH_STYLE[hair_length]
+        hair_len_phrase = (
+            f"My hair is {hair_length}. {hl['note']}. {hl['keywords']}"
+        )
+
+    # ── Color merge ────────────────────────────────────────────────────────
     all_colors = colors[:4] + [c for c in mbti["colors"] if c not in colors][:2]
 
     query_parts = [
-        # Gender context
         gender_phrase,
-        # Appearance-driven color context
+        body_phrase,
+        height_phrase,
+        face_phrase,
+        hair_len_phrase,
         f"My seasonal color palette is {season}, so I look best in "
         f"{', '.join(colors[:5])}.",
         f"I suit {style_note}.",
-        # MBTI-driven style context
         f"I am a {mbti['archetype']} personality ({mbti_type}): {mbti['description']}",
         f"My preferred clothing colors are {', '.join(all_colors)}.",
         f"My style is {', '.join(mbti['styles'])}.",
@@ -862,7 +1137,6 @@ def build_combined_query(
         mbti["keywords"],
     ]
 
-    # Filter out empty strings before joining
     query_parts = [p for p in query_parts if p.strip()]
 
     if extra_input.strip():
