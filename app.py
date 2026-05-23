@@ -455,13 +455,33 @@ def _is_blocked(product: dict) -> bool:
     return any(sig in combined for sig in _BLOCKED_SIGNALS)
 
 
-# Keywords that strongly signal a product is masculine-coded
+# =============================================================================
+# Gender filtering
+# =============================================================================
+
+# Brands where "Unisex" products are genuinely worn by women
+# (activewear, sustainable basics, etc.)
+_UNISEX_OK_FOR_WOMEN = {
+    "ryderwear", "2xu", "2xu outlet", "allbirds", "frank and oak",
+    "girlfriend collective", "alo yoga", "buff bunny",
+}
+
+# Brands where "Unisex" products are primarily men's cuts/styles
+_UNISEX_MALE_BRANDS = {
+    "cuts clothing", "nobull", "hylete", "born primitive",
+    "mnml", "represent", "gymshark",
+}
+
+# Keywords that strongly signal a product is masculine-coded regardless of brand
 _MASCULINE_SIGNALS = {
-    "polo", "button up", "button-up", "men's", "mens", "boyfriend",
-    "dad hat", "a-frame hat", "rope hat", "vest", "5-pocket pant",
-    "slim-fit", "classic-fit", "signature-fit", "lined short",
-    "crossover short", "riviera knit", "ao ", "tfp ", "pyca pro",
-    "versaknit", "alpha vest", "script hat", "x tech", "c tech",
+    "polo", "button up", "button-up", "men's", "mens",
+    "dad hat", "a-frame hat", "rope hat", "5-pocket pant",
+    "lined short", "crossover short", "riviera knit",
+    "ao ", "tfp ", "pyca pro", "versaknit",
+    "alpha vest", "script hat", "x tech", "c tech",
+    "resort shirt", "compression short", "compression long sleeve",
+    "compression sleeve", "tri short", "game day",
+    "1/2 zip", "half zip", "run cap", "visor",
 }
 
 # Keywords that strongly signal a product is feminine-coded
@@ -484,21 +504,49 @@ def _is_feminine_coded(product_name: str) -> bool:
 
 
 def _passes_gender_filter(product: dict, target_gender: str) -> bool:
-    """Return True if this product should be shown to a user with target_gender."""
+    """
+    Return True if this product should be shown to a user with target_gender.
+
+    Rules:
+      Female-tagged  → always shown to Woman, never to Man
+      Male-tagged    → always shown to Man, never to Woman
+      Unisex-tagged  → depends on brand and product name:
+          • Woman: allowed only from genuinely unisex brands AND
+                   not masculine-coded by name
+          • Man:   allowed unless feminine-coded by name
+          • Others: always allowed
+    """
     prod_gender  = product.get("gender", "").strip()
     product_name = product.get("product_name", "")
+    brand        = product.get("brand", "").lower().strip()
 
     if target_gender == "Female":
-        if prod_gender == "Female":   return True
-        if prod_gender == "Male":     return False
-        return not _is_masculine_coded(product_name)
+        if prod_gender == "Female":
+            return True
+        if prod_gender in ("Male", "Other"):
+            return False
+        # Unisex: only allow from women-friendly brands AND not masculine by name
+        if prod_gender == "Unisex":
+            if brand in _UNISEX_MALE_BRANDS:
+                return False
+            if _is_masculine_coded(product_name):
+                return False
+            return True
+        return False  # unknown gender tag → exclude for safety
 
     if target_gender == "Male":
-        if prod_gender == "Male":     return True
-        if prod_gender == "Female":   return False
-        return not _is_feminine_coded(product_name)
+        if prod_gender == "Male":
+            return True
+        if prod_gender in ("Female", "Other"):
+            return False
+        # Unisex: allow unless clearly feminine
+        if prod_gender == "Unisex":
+            return not _is_feminine_coded(product_name)
+        return False
 
-    return True  # Non-binary / unspecified — include everything
+    # Non-binary / Genderfluid / Agender / Prefer not to say → Female + Male + Unisex
+    # Still exclude "Other" (kids items, non-clothing accessories)
+    return prod_gender != "Other"
 
 
 def _is_swimwear(product_name: str) -> bool:
