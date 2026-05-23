@@ -41,7 +41,9 @@ BASE_DATASET_CSV  = BASE_DIR / "data" / "fashion_data_2018_2022.csv"
 CHROMA_DB_PATH    = str(BASE_DIR / "data" / "fashion_chroma_db")
 EMBEDDING_MODEL   = "all-MiniLM-L6-v2"
 TOP_K          = 12   # products shown per page in the closet grid
-CANDIDATE_POOL = 80   # top similarity candidates before shuffle (variety on refresh)
+# No hard cap on candidate pool — retrieve all relevant products so every
+# page shows genuinely different items. The full filtered+ranked list is
+# paginated 12 at a time in render_closet_grid.
 
 # ── External links ────────────────────────────────────────────────────────────
 MBTI_TEST_URL     = "https://www.16personalities.com"
@@ -600,20 +602,20 @@ def retrieve_top_products(
     # Sort by similarity — best matches first
     pool.sort(key=lambda x: x["similarity"], reverse=True)
 
-    # Take top CANDIDATE_POOL, then shuffle within similarity tiers for variety.
-    # Tier shuffle: split into groups of 8, shuffle within each group.
-    # This keeps highly relevant items near the top while varying the exact order.
-    candidates = pool[:CANDIDATE_POOL]
+    # Shuffle within similarity tiers for variety on refresh.
+    # Uses the full pool (no cap) so every page shows genuinely different items.
+    # Tier shuffle: groups of 8 shuffled independently — keeps the most relevant
+    # items near the top while varying the exact order within each tier.
     if refresh_seed > 0:
         rng = random.Random(refresh_seed)
         tier_size = 8
-        tiers = [candidates[i:i+tier_size] for i in range(0, len(candidates), tier_size)]
+        tiers = [pool[i:i+tier_size] for i in range(0, len(pool), tier_size)]
         for tier in tiers:
             rng.shuffle(tier)
-        candidates = [item for tier in tiers for item in tier]
+        pool = [item for tier in tiers for item in tier]
 
-    # Return the full list — pagination happens in render_closet_grid
-    return candidates
+    # Return the full list — pagination in render_closet_grid shows 12 per page
+    return pool
 
 
 # =============================================================================
