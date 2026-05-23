@@ -748,6 +748,21 @@ def render_profile_summary(appearance: dict, mbti_type: str):
 # Step 1 — Appearance Profile
 # =============================================================================
 
+def _save_appearance_and_advance(eye, hair, skin, gender, season, colors, style_note):
+    """Save appearance profile to session state and move to step 2."""
+    st.session_state.appearance = {
+        "eye_color":  eye.lower(),
+        "hair_color": hair.lower(),
+        "skin_tone":  skin,
+        "gender":     gender,
+        "season":     season,
+        "colors":     colors,
+        "style_note": style_note,
+    }
+    st.session_state.step = 2
+    st.rerun()
+
+
 def step_appearance():
     render_steps(1)
     st.markdown("### Step 1 — Tell us about yourself")
@@ -755,6 +770,10 @@ def step_appearance():
         f"These questions match the [Google Form]({APPEARANCE_FORM}) "
         "and help us find colors and styles that complement you."
     )
+
+    # Placeholder for the top Continue button — filled after palette is computed
+    # so it always reflects the current selections. Lets users skip scrolling.
+    top_btn_placeholder = st.empty()
 
     # ── Gender ────────────────────────────────────────────────────────────
     st.markdown("#### 🧑 Gender Identity")
@@ -922,18 +941,19 @@ If the result doesn't feel right, override it below or visit
     </div>
     """, unsafe_allow_html=True)
 
-    if st.button("Continue to Personality →", type="primary", use_container_width=True):
-        st.session_state.appearance = {
-            "eye_color":  eye.lower(),
-            "hair_color": hair.lower(),
-            "skin_tone":  skin,
-            "gender":     gender,
-            "season":     season,
-            "colors":     colors,
-            "style_note": style_note,
-        }
-        st.session_state.step = 2
-        st.rerun()
+    # ── Continue button — shown both here (bottom) and repeated at top ────
+    # The top shortcut is rendered via a placeholder we fill after computing values.
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("Continue to Personality →", type="primary",
+                 use_container_width=True, key="continue_bottom"):
+        _save_appearance_and_advance(eye, hair, skin, gender, season, colors, style_note)
+
+    # Also fill the top shortcut placeholder now that we have all values
+    top_btn_placeholder.empty()
+    with top_btn_placeholder:
+        if st.button("Continue to Personality →", type="primary",
+                     use_container_width=True, key="continue_top"):
+            _save_appearance_and_advance(eye, hair, skin, gender, season, colors, style_note)
 
 
 # =============================================================================
@@ -1079,11 +1099,10 @@ def step_closet(products: list[dict], product_embeddings: np.ndarray,
     # ── Sidebar filters ────────────────────────────────────────────────────
     with st.sidebar:
         st.markdown("### 🗂️ Filter Your Closet")
-        st.caption("Filters apply to your current recommendations.")
+        st.caption("Filters search the full product catalog, not just current results.")
 
         # ── Category ──────────────────────────────────────────────────────
         st.markdown("**👗 Clothing Type**")
-        # Use the full product list for filter options, not just current recs
         all_cats = sorted(set(
             p.get("category", "") for p in products
             if p.get("category") and p.get("category") not in ("Other", "")
@@ -1141,28 +1160,63 @@ def step_closet(products: list[dict], product_embeddings: np.ndarray,
             reset = st.button("↺ Reset", use_container_width=True)
 
         if apply:
-            filtered = list(recommended)  # start from current recs
+            # ── UC5 fix: filter the FULL product catalog, not just current recs ──
+            # This ensures categories like Activewear are found even if they
+            # weren't in the top-80 similarity results for the current query.
+            gender_val = appearance.get("gender", "")
+            dataset_genders = GENDER_TO_DATASET.get(gender_val, [])
+            apply_gender = len(dataset_genders) == 1
+            target_gender = dataset_genders[0] if apply_gender else ""
+
+            # Start from the full product list, apply content blocklist + gender
+            base = [
+                p for p in products
+                if not _is_blocked(p)
+                and (not apply_gender or _passes_gender_filter(p, target_gender))
+            ]
+
+            # Apply user-selected filters
             if sel_cats:
-                filtered = [p for p in filtered if p.get("category") in sel_cats]
+                base = [p for p in base if p.get("category") in sel_cats]
             if sel_brands:
-                filtered = [p for p in filtered if p.get("brand") in sel_brands]
+                base = [p for p in base if p.get("brand") in sel_brands]
             if sel_seasons:
-                filtered = [p for p in filtered if p.get("season") in sel_seasons]
+                base = [p for p in base if p.get("season") in sel_seasons]
             if sel_colors:
-                filtered = [p for p in filtered if p.get("color") in sel_colors]
-            filtered = [
-                p for p in filtered
+                base = [p for p in base if p.get("color") in sel_colors]
+            base = [
+                p for p in base
                 if not p.get("price") or float(p.get("price") or 0) <= max_price
             ]
-            if not filtered:
+
+            if not base:
                 st.warning("No items match those filters. Try broadening your selection.")
             else:
-                st.session_state.recommended = filtered
+                # Re-rank the filtered set by cosine similarity to the current query
+                query_val = build_combined_query(
+                    mbti_type, appearance,
+                    extra_input=st.session_state.get("extra_pref", ""),
+                )
+                # Build embeddings for just the filtered subset
+                filtered_tuples = tuple(
+                    (p.get("product_name",""), p.get("category",""),
+                     p.get("color",""), p.get("brand",""), p.get("season",""))
+                    for p in base
+                )
+                filtered_embs = embed_products(model, filtered_tuples)
+                q_emb = model.encode(query_val, convert_to_numpy=True)
+                for i, p in enumerate(base):
+                    p["similarity"] = round(cosine_sim(q_emb, filtered_embs[i]), 4)
+                base.sort(key=lambda x: x["similarity"], reverse=True)
+
+                st.session_state.recommended = base
+                st.session_state.closet_page = 0
                 st.rerun()
 
         if reset:
             st.session_state.pop("last_query", None)
             st.session_state.pop("recommended", None)
+            st.session_state.closet_page = 0
             st.rerun()
 
         st.markdown("---")
