@@ -184,10 +184,15 @@ def normalise_category(raw: str) -> str:
     """
     raw_lower = raw.lower()
 
-    # Swimwear — return None so the caller can skip this product entirely
+    # Blocked content — return None so the caller skips this product entirely
     if any(w in raw_lower for w in [
+        # Swimwear
         "swim", "swimwear", "swimsuit", "bikini", "bathing suit",
         "board short", "rashguard", "wetsuit", "one-piece",
+        # Bodysuits / intimates / lingerie
+        "bodysuit", "body suit", "intimates", "lingerie", "corset",
+        "bralette", "thong", "garter", "lace pack", "bustier",
+        "plunge shell", "sexy",
     ]):
         return None
 

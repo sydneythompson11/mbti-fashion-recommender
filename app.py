@@ -344,25 +344,93 @@ def cosine_sim(a: np.ndarray, b: np.ndarray) -> float:
 
 @st.cache_data(show_spinner=False)
 def embed_products(_model: SentenceTransformer, product_tuples: tuple) -> np.ndarray:
-    """Embed all product name+category+color strings for similarity search."""
-    texts = [
-        f"{t[0]} {t[1]} {t[2]} {t[3]} {t[4]}"
-        for t in product_tuples
-    ]
+    """
+    Embed products with enriched text so semantic search works for
+    activity-based queries like 'gym', 'yoga', 'workout', 'running'.
+
+    Each product gets a descriptive sentence that includes:
+    - Product name (the raw title)
+    - Category (Activewear, Shirt, Dress, etc.)
+    - Brand (Alo Yoga, Born Primitive, etc.)
+    - Color and season
+    - Activity keywords inferred from the name and category
+    """
+    # Activity keyword expansion — maps category/brand signals to activity terms
+    # so "Airbrush Legging - Alo Yoga" becomes searchable as "yoga gym workout"
+    ACTIVITY_EXPANSIONS = {
+        "activewear": "gym workout fitness training athletic sports exercise",
+        "legging":    "gym yoga workout running fitness leggings",
+        "sports bra": "gym workout fitness training sports bra activewear",
+        "compression":"running training performance compression workout",
+        "alo yoga":   "yoga gym pilates workout mindful movement",
+        "buff bunny": "gym bodybuilding fitness workout training",
+        "girlfriend": "yoga gym workout sustainable activewear",
+        "nobull":     "crossfit training gym workout performance",
+        "hylete":     "gym training performance workout athletic",
+        "born primitive": "crossfit strength training gym workout",
+        "ryderwear":  "gym bodybuilding training workout fitness",
+        "2xu":        "running compression performance training triathlon",
+        "skort":      "tennis golf activewear athletic sport",
+        "pump cover": "gym workout warmup activewear training",
+        "biker short":"gym cycling workout activewear",
+        "track":      "running athletic training workout",
+        "jogger":     "gym casual athletic workout",
+        "hoodie":     "casual gym warmup athletic streetwear",
+        "sweatshirt": "casual gym warmup athletic streetwear",
+    }
+
+    texts = []
+    for t in product_tuples:
+        name, category, color, brand, season = t[0], t[1], t[2], t[3], t[4]
+        name_lower     = name.lower()
+        brand_lower    = brand.lower()
+        category_lower = category.lower()
+
+        # Collect activity expansions that apply to this product
+        activity_terms = []
+        for signal, expansion in ACTIVITY_EXPANSIONS.items():
+            if signal in name_lower or signal in brand_lower or signal in category_lower:
+                activity_terms.append(expansion)
+
+        activity_str = " ".join(activity_terms)
+
+        text = (
+            f"{name}. "
+            f"Category: {category}. "
+            f"Brand: {brand}. "
+            f"Color: {color}. "
+            f"Season: {season}. "
+            f"{activity_str}"
+        ).strip()
+        texts.append(text)
+
     return _model.encode(texts, convert_to_numpy=True, show_progress_bar=False)
 
 
-# Swimwear keywords — these products are excluded from all recommendations
-_SWIMWEAR_SIGNALS = {
+# =============================================================================
+# Content blocklist — products excluded from ALL recommendations
+# =============================================================================
+# Swimwear, bodysuits, intimates, lingerie, and corsets are blocked.
+# This keeps recommendations appropriate for a class presentation.
+
+_BLOCKED_SIGNALS = {
+    # Swimwear
     "swim", "swimwear", "swimsuit", "bikini", "bathing suit", "one-piece",
     "board short", "rashguard", "wetsuit", "swim top", "swim bottom",
     "swim trunk", "tankini",
+    # Bodysuits / intimates / lingerie
+    "bodysuit", "body suit", "intimates", "lingerie", "corset",
+    "bralette", "thong", "g-string", "teddy", "chemise", "bustier",
+    "garter", "lace pack", "sexy", "plunge bodysuit", "plunge shell",
 }
 
 
-def _is_swimwear(product_name: str) -> bool:
-    name = product_name.lower()
-    return any(sig in name for sig in _SWIMWEAR_SIGNALS)
+def _is_blocked(product: dict) -> bool:
+    """Return True if this product should be excluded from recommendations."""
+    name     = product.get("product_name", "").lower()
+    category = product.get("category", "").lower()
+    combined = name + " " + category
+    return any(sig in combined for sig in _BLOCKED_SIGNALS)
 
 
 # Keywords that strongly signal a product is masculine-coded
@@ -443,8 +511,8 @@ def retrieve_top_products(
 
     scored = []
     for score, product in zip(scores, products):
-        # Always skip swimwear
-        if _is_swimwear(product.get("product_name", "")):
+        # Skip blocked content (swimwear, bodysuits, intimates, lingerie)
+        if _is_blocked(product):
             continue
         p = dict(product)
         p["similarity"] = round(score, 4)
@@ -920,42 +988,100 @@ def step_closet(products: list[dict], product_embeddings: np.ndarray,
     # Render the closet grid
     render_closet_grid(recommended)
 
-    # Filter sidebar
+    # ── Sidebar filters ────────────────────────────────────────────────────
     with st.sidebar:
-        st.markdown("### 🗂️ Filter Closet")
-        all_cats    = sorted(set(p.get("category","") for p in products if p.get("category")))
-        all_brands  = sorted(set(p.get("brand","")    for p in products if p.get("brand")))
-        all_seasons = sorted(set(p.get("season","")   for p in products if p.get("season")))
+        st.markdown("### 🗂️ Filter Your Closet")
+        st.caption("Filters apply to your current recommendations.")
 
-        sel_cats    = st.multiselect("Category",  all_cats)
-        sel_brands  = st.multiselect("Brand",     all_brands)
-        sel_seasons = st.multiselect("Season",    all_seasons)
-        max_price   = st.slider("Max price ($)", 0, 500, 500)
+        # ── Category ──────────────────────────────────────────────────────
+        st.markdown("**👗 Clothing Type**")
+        # Use the full product list for filter options, not just current recs
+        all_cats = sorted(set(
+            p.get("category", "") for p in products
+            if p.get("category") and p.get("category") not in ("Other", "")
+        ))
+        sel_cats = st.multiselect(
+            "Category", all_cats,
+            placeholder="All types",
+            label_visibility="collapsed",
+        )
 
-        if st.button("Apply Filters", use_container_width=True):
-            filtered = recommended
+        # ── Brand ──────────────────────────────────────────────────────────
+        st.markdown("**🏷️ Brand**")
+        all_brands = sorted(set(p.get("brand", "") for p in products if p.get("brand")))
+        sel_brands = st.multiselect(
+            "Brand", all_brands,
+            placeholder="All brands",
+            label_visibility="collapsed",
+        )
+
+        # ── Season ─────────────────────────────────────────────────────────
+        st.markdown("**🌸 Season**")
+        all_seasons = sorted(set(p.get("season", "") for p in products if p.get("season")))
+        sel_seasons = st.multiselect(
+            "Season", all_seasons,
+            placeholder="All seasons",
+            label_visibility="collapsed",
+        )
+
+        # ── Color ──────────────────────────────────────────────────────────
+        st.markdown("**🎨 Color**")
+        all_colors = sorted(set(p.get("color", "") for p in products
+                                if p.get("color") and p.get("color") != "Multicolor"))
+        sel_colors = st.multiselect(
+            "Color", all_colors,
+            placeholder="Any color",
+            label_visibility="collapsed",
+        )
+
+        # ── Price ──────────────────────────────────────────────────────────
+        st.markdown("**💰 Max Price**")
+        prices = [float(p.get("price") or 0) for p in products if p.get("price")]
+        max_in_data = int(max(prices)) if prices else 500
+        max_price = st.slider(
+            "Max price", 0, max_in_data, max_in_data,
+            format="$%d",
+            label_visibility="collapsed",
+        )
+
+        st.markdown("---")
+
+        col_apply, col_reset = st.columns(2)
+        with col_apply:
+            apply = st.button("✓ Apply", type="primary", use_container_width=True)
+        with col_reset:
+            reset = st.button("↺ Reset", use_container_width=True)
+
+        if apply:
+            filtered = list(recommended)  # start from current recs
             if sel_cats:
                 filtered = [p for p in filtered if p.get("category") in sel_cats]
             if sel_brands:
                 filtered = [p for p in filtered if p.get("brand") in sel_brands]
             if sel_seasons:
                 filtered = [p for p in filtered if p.get("season") in sel_seasons]
+            if sel_colors:
+                filtered = [p for p in filtered if p.get("color") in sel_colors]
             filtered = [
                 p for p in filtered
                 if not p.get("price") or float(p.get("price") or 0) <= max_price
             ]
-            st.session_state.recommended = filtered
-            st.rerun()
+            if not filtered:
+                st.warning("No items match those filters. Try broadening your selection.")
+            else:
+                st.session_state.recommended = filtered
+                st.rerun()
 
-        if st.button("Reset Filters", use_container_width=True):
+        if reset:
             st.session_state.pop("last_query", None)
+            st.session_state.pop("recommended", None)
             st.rerun()
 
         st.markdown("---")
         st.markdown(f"**{len(recommended)}** items in your closet")
         st.markdown(
-            f"[Take MBTI Test]({MBTI_TEST_URL})  \n"
-            f"[Appearance Form]({APPEARANCE_FORM})"
+            f"[🧠 Take MBTI Test]({MBTI_TEST_URL})  \n"
+            f"[📋 Appearance Form]({APPEARANCE_FORM})"
         )
 
 
