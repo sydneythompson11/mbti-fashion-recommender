@@ -54,13 +54,21 @@ APPEARANCE_FORM   = (
 
 # Shopify base URLs for image fetching
 SHOPIFY_BASES = {
-    "princess polly":  "https://us.princesspolly.com",
-    "cuts clothing":   "https://cutsclothing.com",
-    "represent":       "https://representclo.com",
-    "allbirds":        "https://www.allbirds.com",
-    "frank and oak":   "https://www.frankandoak.com",
-    "mnml":            "https://www.mnml.la",
-    "i am gia":        "https://www.iamgia.com",
+    "princess polly":       "https://us.princesspolly.com",
+    "cuts clothing":        "https://cutsclothing.com",
+    "represent":            "https://representclo.com",
+    "allbirds":             "https://www.allbirds.com",
+    "frank and oak":        "https://www.frankandoak.com",
+    "mnml":                 "https://www.mnml.la",
+    "i am gia":             "https://www.iamgia.com",
+    "alo yoga":             "https://aloyoga.com",
+    "buff bunny":           "https://www.buffbunny.com",
+    "girlfriend collective":"https://www.girlfriend.com",
+    "nobull":               "https://www.nobullproject.com",
+    "hylete":               "https://www.hylete.com",
+    "born primitive":       "https://www.bornprimitive.com",
+    "ryderwear":            "https://www.ryderwear.com",
+    "2xu":                  "https://www.2xu.com",
 }
 
 FALLBACK_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='500' viewBox='0 0 400 500'%3E%3Crect width='400' height='500' fill='%23f3e8ff'/%3E%3Ctext x='50%25' y='45%25' font-family='sans-serif' font-size='48' text-anchor='middle' fill='%23c4a8e0'%3E👗%3C/text%3E%3Ctext x='50%25' y='58%25' font-family='sans-serif' font-size='14' text-anchor='middle' fill='%239e8aad'%3ENo image available%3C/text%3E%3C/svg%3E"
@@ -351,6 +359,35 @@ def fetch_shopify_image(product_url: str, brand: str) -> str:
                 return src
     except Exception:
         pass
+
+    # Fallback: try to construct URL from SHOPIFY_BASES using partial brand match
+    brand_lower = brand.lower().strip()
+    base_url = None
+    for key, url in SHOPIFY_BASES.items():
+        if key in brand_lower or brand_lower in key:
+            base_url = url
+            break
+    if base_url and product_url:
+        # Try the .json endpoint via the known base URL
+        handle = product_url.rstrip("/").split("/products/")[-1]
+        alt_json = f"{base_url}/products/{handle}.json"
+        if alt_json != json_url:
+            try:
+                resp2 = requests.get(
+                    alt_json,
+                    headers={"User-Agent": "Mozilla/5.0"},
+                    timeout=6,
+                )
+                if resp2.status_code == 200:
+                    data2 = resp2.json()
+                    images2 = data2.get("product", {}).get("images", [])
+                    if images2:
+                        src2 = images2[0].get("src", "")
+                        src2 = re.sub(r'\.(jpg|jpeg|png|webp)(\?.*)?$',
+                                      r'_400x.\1', src2, flags=re.IGNORECASE)
+                        return src2
+            except Exception:
+                pass
 
     return FALLBACK_IMAGE
 
@@ -913,6 +950,10 @@ def step_appearance():
         f"These questions match the [Google Form]({APPEARANCE_FORM}) "
         "and help us find colors and styles that complement you."
     )
+    st.caption(
+        "Note: The in-app form below has more fields than the Google Form — "
+        "fill in as many as you like."
+    )
 
     # Placeholder for the top Continue button — filled after palette is computed
     # so it always reflects the current selections. Lets users skip scrolling.
@@ -1250,11 +1291,11 @@ def step_closet(products: list[dict], product_embeddings: np.ndarray,
 
     # ── Refinement controls — always visible, not buried in expander ──────
     with st.container():
-        col_extra, col_refresh, col_back = st.columns([3, 1, 1])
+        col_extra, col_refresh, col_back, col_restart = st.columns([3, 1, 1, 1])
         with col_extra:
             extra = st.text_input(
                 "✏️ Refine your recommendations",
-                placeholder="e.g. casual summer, going out, work outfit...",
+                placeholder="e.g. casual summer, gym outfit, going out, work wear, activewear...",
                 key="extra_pref",
                 label_visibility="visible",
             )
@@ -1270,6 +1311,12 @@ def step_closet(products: list[dict], product_embeddings: np.ndarray,
             st.markdown("<br>", unsafe_allow_html=True)
             if st.button("← Change Profile", use_container_width=True, key="change_profile_btn"):
                 st.session_state.step = 1
+                st.rerun()
+        with col_restart:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔄 Start Over", use_container_width=True, key="start_over_btn"):
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
                 st.rerun()
 
     # ── Build query and retrieve products ─────────────────────────────────
@@ -1354,7 +1401,7 @@ def step_closet(products: list[dict], product_embeddings: np.ndarray,
         prices = [float(p.get("price") or 0) for p in products if p.get("price")]
         max_in_data = int(max(prices)) if prices else 500
         max_price = st.slider(
-            "Max price", 0, max_in_data, max_in_data,
+            "Max price", 0, max_in_data, min(300, max_in_data),
             format="$%d",
             label_visibility="collapsed",
         )

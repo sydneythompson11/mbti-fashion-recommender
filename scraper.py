@@ -118,18 +118,54 @@ def safe_get(url: str, params: dict = None, timeout: int = 15) -> Optional[reque
 
 def infer_season(product_name: str, description: str = "") -> str:
     """
-    Infer a season from product name / description keywords.
-    Falls back to 'All' if no signal is found.
+    Infer a season from product name / description / category keywords.
+    Uses broader signals so fewer products default to 'All'.
     """
     text = (product_name + " " + description).lower()
-    if any(w in text for w in ["summer", "beach", "swim", "linen", "shorts", "tank"]):
+
+    # Summer signals
+    if any(w in text for w in [
+        "summer", "beach", "swim", "linen", "shorts", "tank", "cami",
+        "halter", "strapless", "crop", "mini", "sundress", "floral",
+        "tropical", "lightweight", "breathable", "sleeveless", "bikini",
+        "cutout", "off-shoulder", "off shoulder", "breezy", "resort",
+    ]):
         return "Summer"
-    if any(w in text for w in ["winter", "wool", "knit", "coat", "puffer", "fleece", "thermal"]):
+
+    # Winter signals
+    if any(w in text for w in [
+        "winter", "wool", "knit", "coat", "puffer", "fleece", "thermal",
+        "cashmere", "turtleneck", "cable", "chunky", "sherpa", "quilted",
+        "down jacket", "parka", "beanie", "scarf", "gloves", "cozy",
+        "heavyweight", "insulated", "plush", "hoodie", "sweatshirt",
+    ]):
         return "Winter"
-    if any(w in text for w in ["spring", "floral", "light jacket", "trench"]):
+
+    # Spring signals
+    if any(w in text for w in [
+        "spring", "floral", "light jacket", "trench", "pastel",
+        "midi dress", "wrap dress", "denim jacket", "transitional",
+        "layering", "light wash", "blouse", "ruffle",
+    ]):
         return "Spring"
-    if any(w in text for w in ["autumn", "fall", "corduroy", "suede", "leather jacket"]):
+
+    # Autumn signals
+    if any(w in text for w in [
+        "autumn", "fall", "corduroy", "suede", "leather jacket",
+        "rust", "mustard", "olive", "burnt orange", "terracotta",
+        "plaid", "check", "tartan", "earth tone", "camel coat",
+        "blazer", "trousers", "ankle boot",
+    ]):
         return "Autumn"
+
+    # Activewear — year-round
+    if any(w in text for w in [
+        "legging", "sports bra", "compression", "gym", "yoga",
+        "training", "athletic", "workout", "running", "cycling",
+        "performance", "activewear", "track", "jogger",
+    ]):
+        return "All"
+
     return "All"
 
 
