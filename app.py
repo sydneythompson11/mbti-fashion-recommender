@@ -329,73 +329,71 @@ def load_embedding_model() -> SentenceTransformer:
 def fetch_shopify_image(product_url: str, brand: str) -> str:
     """
     Fetch the first product image from a Shopify store's product JSON endpoint.
-
-    Shopify product URLs follow the pattern:
-        https://store.com/products/product-handle
-    The JSON endpoint is:
-        https://store.com/products/product-handle.json
-
     Returns the image src URL, or a fallback placeholder.
     """
     if not product_url:
         return FALLBACK_IMAGE
 
-    # Build the .json URL from the product URL
     json_url = product_url.rstrip("/") + ".json"
 
-    try:
-        resp = requests.get(
-            json_url,
-            headers={"User-Agent": "Mozilla/5.0"},
-            timeout=6,
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            images = data.get("product", {}).get("images", [])
-            if images:
-                src = images[0].get("src", "")
-                # Use a smaller size variant for faster loading
-                src = re.sub(r'\.(jpg|jpeg|png|webp)(\?.*)?$',
-                             r'_400x.\1', src, flags=re.IGNORECASE)
-                return src
-    except Exception:
-        pass
+    def _get_image_src(url: str) -> str:
+        """Fetch JSON, extract first image src, return empty string on failure."""
+        try:
+            resp = requests.get(
+                url,
+                headers={"User-Agent": "Mozilla/5.0"},
+                timeout=8,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                images = data.get("product", {}).get("images", [])
+                if images:
+                    src = images[0].get("src", "")
+                    if src:
+                        # Request a smaller size variant for faster loading.
+                        # Only apply if the URL doesn't already have a size suffix.
+                        # Shopify CDN pattern: .../filename_400x.jpg
+                        # We insert _400x before the extension, but only if the
+                        # URL doesn't already contain a size token.
+                        if "_400x" not in src and "_800x" not in src:
+                            src = re.sub(
+                                r'(\.(jpg|jpeg|png|webp))(\?|$)',
+                                r'_400x\1\3',
+                                src,
+                                flags=re.IGNORECASE,
+                            )
+                        return src
+        except Exception:
+            pass
+        return ""
 
-    # Fallback: try to construct URL from SHOPIFY_BASES using partial brand match
-    # Use more aggressive matching — check if any part of the brand name matches
+    # Try the direct product URL first
+    src = _get_image_src(json_url)
+    if src:
+        return src
+
+    # Fallback: reconstruct URL from SHOPIFY_BASES using normalized brand matching
     brand_lower = brand.lower().strip()
-    # Normalize common brand variants for matching
     brand_normalized = (brand_lower
         .replace(" outlet", "").replace("-fresh", "")
         .replace(" lower impact", "").replace(" petite", "")
         .replace(" tall", "").replace("i.am.gia", "i am gia")
-        .replace("buffbunny", "buff bunny").replace("2xu", "2xu")
+        .replace("buffbunny", "buff bunny")
         .strip())
+
     base_url = None
     for key, url in SHOPIFY_BASES.items():
         if key in brand_normalized or brand_normalized in key or key in brand_lower:
             base_url = url
             break
+
     if base_url and product_url:
         handle = product_url.rstrip("/").split("/products/")[-1]
         alt_json = f"{base_url}/products/{handle}.json"
         if alt_json != json_url:
-            try:
-                resp2 = requests.get(
-                    alt_json,
-                    headers={"User-Agent": "Mozilla/5.0"},
-                    timeout=6,
-                )
-                if resp2.status_code == 200:
-                    data2 = resp2.json()
-                    images2 = data2.get("product", {}).get("images", [])
-                    if images2:
-                        src2 = images2[0].get("src", "")
-                        src2 = re.sub(r'\.(jpg|jpeg|png|webp)(\?.*)?$',
-                                      r'_400x.\1', src2, flags=re.IGNORECASE)
-                        return src2
-            except Exception:
-                pass
+            src = _get_image_src(alt_json)
+            if src:
+                return src
 
     return FALLBACK_IMAGE
 
@@ -499,6 +497,13 @@ _BLOCKED_SIGNALS = {
     "new heights booty", "sculpt seamless mini mid rise short",
     "high-waist dreamscape short", "mesh mirage short",
     "accolade short", "match point short", "alumni short",
+    # Non-clothing items
+    "store credit", "face mask", "gym bag", "crossbody bag", "tote bag",
+    "shoulder bag", "bracelet", "sunglasses", "decal", "velcro patch",
+    "racing helmet", "visor", "compression sock", "race sock",
+    "barre sock", "leg sleeve", "haptic headband", "sport headband",
+    "airlift headband", "pom beanie", "a-frame hat", "rope hat",
+    "dad hat", "script hat", "washed cap", "panelled cap",
 }
 
 
@@ -656,37 +661,39 @@ def retrieve_top_products(
     pool.sort(key=lambda x: x["similarity"], reverse=True)
 
     # ── Category diversity balancing ──────────────────────────────────────
-    # Without this, activewear dominates because the embedding expansion adds
-    # many gym keywords that score highly for almost any query.
-    # Strategy: interleave categories so the first page always shows a mix.
-    # We take the top item from each category in round-robin order, then
-    # append remaining items sorted by similarity.
-    #
-    # Activewear is capped at 25% of the first 48 items (first 4 pages) so
-    # it doesn't crowd out dresses, shirts, jeans, etc. unless the user
-    # explicitly searches for gym/workout in the refine box.
-    #
-    # If the query contains activewear keywords, skip the cap so gym searches
-    # still return mostly activewear.
+    # Detect what kind of query this is so we can apply the right strategy.
+    query_lower = query.lower()
+
     activewear_keywords = {
         "gym", "workout", "yoga", "fitness", "athletic", "training",
         "activewear", "sports", "running", "crossfit", "pilates",
         "legging", "sports bra", "compression",
     }
-    query_lower = query.lower()
-    activewear_query = any(kw in query_lower for kw in activewear_keywords)
+    professional_keywords = {
+        "corporate", "office", "work wear", "workwear", "business",
+        "professional", "formal", "blazer", "tailored", "smart casual",
+        "dress pant", "button-down", "button down",
+    }
 
-    if not activewear_query:
-        # Separate activewear from everything else
+    activewear_query    = any(kw in query_lower for kw in activewear_keywords)
+    professional_query  = any(kw in query_lower for kw in professional_keywords)
+
+    if professional_query:
+        # For office/formal queries: completely exclude activewear
+        # Activewear has no place in a corporate wardrobe recommendation
+        pool = [p for p in pool if p.get("category") != "Activewear"]
+
+    elif not activewear_query:
+        # For general queries: cap activewear at 25% of first 4 pages
+        # so it doesn't crowd out dresses, shirts, jeans, etc.
         activewear_items = [p for p in pool if p.get("category") == "Activewear"]
         other_items      = [p for p in pool if p.get("category") != "Activewear"]
 
-        # Cap activewear at 25% of the first 48 slots (12 per page × 4 pages)
-        max_activewear_in_front = 12  # 25% of 48
+        max_activewear_in_front = 12  # 25% of 48 (4 pages × 12)
         front_activewear = activewear_items[:max_activewear_in_front]
         back_activewear  = activewear_items[max_activewear_in_front:]
 
-        # Interleave: for every 3 non-activewear items, insert 1 activewear item
+        # Interleave: 1 activewear item per 3 non-activewear items
         interleaved = []
         aw_idx = 0
         for i, item in enumerate(other_items):
@@ -694,11 +701,10 @@ def retrieve_top_products(
             if aw_idx < len(front_activewear) and (i + 1) % 3 == 0:
                 interleaved.append(front_activewear[aw_idx])
                 aw_idx += 1
-        # Add any remaining front activewear not yet inserted
         interleaved.extend(front_activewear[aw_idx:])
-        # Append the rest of activewear at the end
         interleaved.extend(back_activewear)
         pool = interleaved
+    # else: activewear_query → return full pool as-is (gym searches get gym clothes)
 
     # Shuffle within similarity tiers for variety on refresh.
     # Uses the full pool (no cap) so every page shows genuinely different items.
