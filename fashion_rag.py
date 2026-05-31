@@ -1005,6 +1005,72 @@ def build_vector_store(chunks: list[dict]) -> chromadb.Collection:
 # MBTI Profile Builder
 # =============================================================================
 
+def expand_style_query(raw_input: str) -> str:
+    """
+    Expand user free-text style queries with fashion-specific synonyms so the
+    embedding model can match them to product descriptions.
+
+    The embedding model understands fashion vocabulary but not everyday phrases
+    like "corporate office wear" or "date night". This map translates those
+    phrases into the clothing terms that actually appear in product names.
+
+    Args:
+        raw_input: The user's free-text refinement (e.g. "corporate office wear")
+
+    Returns:
+        Expanded query string with added fashion keywords
+    """
+    text = raw_input.lower().strip()
+
+    EXPANSIONS = {
+        # Professional / office
+        "corporate":      "blazer structured jacket tailored trousers dress pants button-down professional",
+        "office":         "blazer structured jacket tailored trousers dress pants button-down professional",
+        "work wear":      "blazer structured jacket tailored trousers dress pants button-down professional",
+        "workwear":       "blazer structured jacket tailored trousers dress pants button-down professional",
+        "business":       "blazer structured jacket tailored trousers dress pants button-down professional",
+        "professional":   "blazer structured jacket tailored trousers dress pants button-down professional",
+        "formal":         "blazer dress midi maxi structured elegant evening gown",
+        "smart casual":   "blazer chino midi dress structured shirt polished",
+
+        # Occasions
+        "date night":     "dress midi wrap elegant feminine floral evening",
+        "going out":      "dress skirt top elegant evening party",
+        "party":          "dress skirt sequin festive evening party",
+        "wedding guest":  "midi dress maxi dress floral elegant formal",
+        "brunch":         "midi dress blouse skirt casual chic",
+        "vacation":       "linen dress sundress floral lightweight resort",
+        "beach":          "linen dress sundress lightweight cover-up",
+        "casual":         "jeans t-shirt relaxed everyday comfortable",
+        "streetwear":     "hoodie jogger oversized graphic tee sneakers",
+        "athleisure":     "legging jogger hoodie comfortable sporty",
+
+        # Activewear (explicit)
+        "gym":            "legging sports bra tank top training athletic workout",
+        "yoga":           "legging sports bra tank top yoga flow mindful",
+        "workout":        "legging sports bra tank top training athletic",
+        "running":        "legging shorts tank top compression running athletic",
+        "activewear":     "legging sports bra tank top training athletic workout",
+        "athletic":       "legging sports bra tank top training athletic workout",
+
+        # Seasons
+        "summer":         "linen lightweight sundress floral sleeveless",
+        "winter":         "coat jacket knit wool sweater warm",
+        "spring":         "floral light jacket midi dress pastel",
+        "fall":           "blazer knit midi dress boots layering",
+        "autumn":         "blazer knit midi dress boots layering",
+    }
+
+    added = []
+    for trigger, expansion in EXPANSIONS.items():
+        if trigger in text:
+            added.append(expansion)
+
+    if added:
+        return raw_input + " " + " ".join(added)
+    return raw_input
+
+
 def build_mbti_query(mbti_type: str, extra_input: str = "") -> str:
     """
     Build a rich natural-language query from an MBTI type and optional user input.
@@ -1026,7 +1092,7 @@ def build_mbti_query(mbti_type: str, extra_input: str = "") -> str:
     ]
 
     if extra_input.strip():
-        query_parts.append(f"Additional preference: {extra_input.strip()}")
+        query_parts.append(f"Additional preference: {expand_style_query(extra_input.strip())}")
 
     return " ".join(query_parts)
 
@@ -1140,7 +1206,7 @@ def build_combined_query(
     query_parts = [p for p in query_parts if p.strip()]
 
     if extra_input.strip():
-        query_parts.append(f"Additional preference: {extra_input.strip()}")
+        query_parts.append(f"Additional preference: {expand_style_query(extra_input.strip())}")
 
     return " ".join(query_parts)
 

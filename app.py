@@ -102,6 +102,7 @@ from fashion_rag import (
     derive_season,
     build_combined_query,
     build_mbti_query,
+    expand_style_query,
 )
 
 # =============================================================================
@@ -361,14 +362,21 @@ def fetch_shopify_image(product_url: str, brand: str) -> str:
         pass
 
     # Fallback: try to construct URL from SHOPIFY_BASES using partial brand match
+    # Use more aggressive matching — check if any part of the brand name matches
     brand_lower = brand.lower().strip()
+    # Normalize common brand variants for matching
+    brand_normalized = (brand_lower
+        .replace(" outlet", "").replace("-fresh", "")
+        .replace(" lower impact", "").replace(" petite", "")
+        .replace(" tall", "").replace("i.am.gia", "i am gia")
+        .replace("buffbunny", "buff bunny").replace("2xu", "2xu")
+        .strip())
     base_url = None
     for key, url in SHOPIFY_BASES.items():
-        if key in brand_lower or brand_lower in key:
+        if key in brand_normalized or brand_normalized in key or key in brand_lower:
             base_url = url
             break
     if base_url and product_url:
-        # Try the .json endpoint via the known base URL
         handle = product_url.rstrip("/").split("/products/")[-1]
         alt_json = f"{base_url}/products/{handle}.json"
         if alt_json != json_url:
@@ -663,6 +671,7 @@ def retrieve_top_products(
     activewear_keywords = {
         "gym", "workout", "yoga", "fitness", "athletic", "training",
         "activewear", "sports", "running", "crossfit", "pilates",
+        "legging", "sports bra", "compression",
     }
     query_lower = query.lower()
     activewear_query = any(kw in query_lower for kw in activewear_keywords)
@@ -1347,7 +1356,7 @@ def step_closet(products: list[dict], product_embeddings: np.ndarray,
         with col_extra:
             extra = st.text_input(
                 "✏️ Refine your recommendations",
-                placeholder="e.g. casual summer, gym outfit, going out, work wear, activewear...",
+                placeholder="e.g. corporate office wear, date night, gym outfit, casual summer...",
                 key="extra_pref",
                 label_visibility="visible",
             )
@@ -1410,12 +1419,26 @@ def step_closet(products: list[dict], product_embeddings: np.ndarray,
 
         # ── Category ──────────────────────────────────────────────────────
         st.markdown("**👗 Clothing Type**")
-        all_cats = sorted(set(
+        # Add virtual categories that map to multiple real categories
+        VIRTUAL_CATEGORIES = {
+            "Bottoms": ["Jeans", "Shorts", "Skirt"],
+            "Tops":    ["Shirt", "Blouse"],
+            "Outerwear": ["Jacket"],
+        }
+        real_cats = sorted(set(
             p.get("category", "") for p in products
             if p.get("category") and p.get("category") not in ("Other", "")
         ))
+        # Show virtual categories first, then individual real ones
+        display_cats = list(VIRTUAL_CATEGORIES.keys()) + [
+            c for c in real_cats if c not in ("Jeans","Shorts","Skirt","Shirt","Blouse","Jacket")
+        ] + ["Jeans", "Shorts", "Skirt", "Shirt", "Blouse", "Jacket"]
+        # Deduplicate while preserving order
+        seen_cats = set()
+        display_cats = [c for c in display_cats if not (c in seen_cats or seen_cats.add(c))]
+
         sel_cats = st.multiselect(
-            "Category", all_cats,
+            "Category", display_cats,
             placeholder="All types",
             label_visibility="collapsed",
         )
@@ -1483,8 +1506,15 @@ def step_closet(products: list[dict], product_embeddings: np.ndarray,
             ]
 
             # Apply user-selected filters
+            # Expand virtual categories (Bottoms → Jeans + Shorts + Skirt, etc.)
             if sel_cats:
-                base = [p for p in base if p.get("category") in sel_cats]
+                expanded_cats = set()
+                for c in sel_cats:
+                    if c in VIRTUAL_CATEGORIES:
+                        expanded_cats.update(VIRTUAL_CATEGORIES[c])
+                    else:
+                        expanded_cats.add(c)
+                base = [p for p in base if p.get("category") in expanded_cats]
             if sel_brands:
                 base = [p for p in base if p.get("brand") in sel_brands]
             if sel_seasons:
