@@ -483,6 +483,14 @@ _BLOCKED_SIGNALS = {
     "bodysuit", "body suit", "intimates", "lingerie", "corset",
     "bralette", "thong", "g-string", "teddy", "chemise", "bustier",
     "garter", "lace pack", "sexy", "plunge bodysuit", "plunge shell",
+    # Revealing shorts / micro items
+    "booty short", "micro short", "micro skort", "micro sport short",
+    "scrunch short", "extreme scrunch", "nkd v scrunch",
+    "stonewash scrunch", "boost seamless short",
+    "belvani micro", "wittney buckle micro",
+    "new heights booty", "sculpt seamless mini mid rise short",
+    "high-waist dreamscape short", "mesh mirage short",
+    "accolade short", "match point short", "alumni short",
 }
 
 
@@ -638,6 +646,50 @@ def retrieve_top_products(
 
     # Sort by similarity — best matches first
     pool.sort(key=lambda x: x["similarity"], reverse=True)
+
+    # ── Category diversity balancing ──────────────────────────────────────
+    # Without this, activewear dominates because the embedding expansion adds
+    # many gym keywords that score highly for almost any query.
+    # Strategy: interleave categories so the first page always shows a mix.
+    # We take the top item from each category in round-robin order, then
+    # append remaining items sorted by similarity.
+    #
+    # Activewear is capped at 25% of the first 48 items (first 4 pages) so
+    # it doesn't crowd out dresses, shirts, jeans, etc. unless the user
+    # explicitly searches for gym/workout in the refine box.
+    #
+    # If the query contains activewear keywords, skip the cap so gym searches
+    # still return mostly activewear.
+    activewear_keywords = {
+        "gym", "workout", "yoga", "fitness", "athletic", "training",
+        "activewear", "sports", "running", "crossfit", "pilates",
+    }
+    query_lower = query.lower()
+    activewear_query = any(kw in query_lower for kw in activewear_keywords)
+
+    if not activewear_query:
+        # Separate activewear from everything else
+        activewear_items = [p for p in pool if p.get("category") == "Activewear"]
+        other_items      = [p for p in pool if p.get("category") != "Activewear"]
+
+        # Cap activewear at 25% of the first 48 slots (12 per page × 4 pages)
+        max_activewear_in_front = 12  # 25% of 48
+        front_activewear = activewear_items[:max_activewear_in_front]
+        back_activewear  = activewear_items[max_activewear_in_front:]
+
+        # Interleave: for every 3 non-activewear items, insert 1 activewear item
+        interleaved = []
+        aw_idx = 0
+        for i, item in enumerate(other_items):
+            interleaved.append(item)
+            if aw_idx < len(front_activewear) and (i + 1) % 3 == 0:
+                interleaved.append(front_activewear[aw_idx])
+                aw_idx += 1
+        # Add any remaining front activewear not yet inserted
+        interleaved.extend(front_activewear[aw_idx:])
+        # Append the rest of activewear at the end
+        interleaved.extend(back_activewear)
+        pool = interleaved
 
     # Shuffle within similarity tiers for variety on refresh.
     # Uses the full pool (no cap) so every page shows genuinely different items.
