@@ -1552,7 +1552,7 @@ def step_personality():
                     f"**{mbti}**  \n{profile['archetype']}",
                     key=f"mbti_{mbti}",
                     use_container_width=True,
-                    help=f"{profile['description']}\n\nColors: {', '.join(profile['colors'][:3])}",
+                    help=f"{profile['description']}\n\nStyle: {', '.join(profile['styles'][:3])}",
                 ):
                     selected_mbti = mbti
 
