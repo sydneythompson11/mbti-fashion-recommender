@@ -316,6 +316,40 @@ def load_products() -> list[dict]:
     return products
 
 
+@st.cache_data(show_spinner="Verifying product images... (first run only)")
+def load_products_with_images() -> list[dict]:
+    """
+    Load products and pre-verify that each product URL returns a real image.
+    Products whose .json endpoint returns no images are excluded entirely —
+    they would show as 'No image available' placeholders in the closet.
+
+    This runs once and is cached. Subsequent loads are instant.
+    """
+    raw = load_products()
+    verified = []
+    headers = {"User-Agent": "Mozilla/5.0"}
+
+    for p in raw:
+        url = p.get("product_url", "")
+        if not url:
+            continue
+        json_url = url.rstrip("/") + ".json"
+        try:
+            resp = requests.get(json_url, headers=headers, timeout=6)
+            if resp.status_code == 200:
+                data = resp.json()
+                images = data.get("product", {}).get("images", [])
+                if images and images[0].get("src", ""):
+                    # Store the image URL directly so we don't re-fetch later
+                    p["_cached_image"] = images[0]["src"]
+                    verified.append(p)
+            # 404 or empty images → skip this product
+        except Exception:
+            pass  # network error → skip
+
+    return verified
+
+
 @st.cache_resource(show_spinner="Loading style model... (first run only, ~15 seconds)")
 def load_embedding_model() -> SentenceTransformer:
     return SentenceTransformer(EMBEDDING_MODEL)
@@ -326,18 +360,31 @@ def load_embedding_model() -> SentenceTransformer:
 # =============================================================================
 
 @st.cache_data(show_spinner=False, ttl=3600)
-def fetch_shopify_image(product_url: str, brand: str) -> str:
+def fetch_shopify_image(product_url: str, brand: str, cached_image: str = "") -> str:
     """
-    Fetch the first product image from a Shopify store's product JSON endpoint.
-    Returns the image src URL, or a fallback placeholder.
+    Return a product image URL.
+    Uses the pre-verified cached image if available (set during load_products_with_images).
+    Falls back to a live fetch if not cached.
+    Never returns FALLBACK_IMAGE — products without images are excluded at load time.
     """
+    # Use pre-verified image from load time if available
+    if cached_image:
+        src = cached_image
+        if "_400x" not in src and "_800x" not in src:
+            src = re.sub(
+                r'(\.(jpg|jpeg|png|webp))(\?|$)',
+                r'_400x\1\3',
+                src,
+                flags=re.IGNORECASE,
+            )
+        return src
+
     if not product_url:
         return FALLBACK_IMAGE
 
     json_url = product_url.rstrip("/") + ".json"
 
     def _get_image_src(url: str) -> str:
-        """Fetch JSON, extract first image src, return empty string on failure."""
         try:
             resp = requests.get(
                 url,
@@ -350,11 +397,6 @@ def fetch_shopify_image(product_url: str, brand: str) -> str:
                 if images:
                     src = images[0].get("src", "")
                     if src:
-                        # Request a smaller size variant for faster loading.
-                        # Only apply if the URL doesn't already have a size suffix.
-                        # Shopify CDN pattern: .../filename_400x.jpg
-                        # We insert _400x before the extension, but only if the
-                        # URL doesn't already contain a size token.
                         if "_400x" not in src and "_800x" not in src:
                             src = re.sub(
                                 r'(\.(jpg|jpeg|png|webp))(\?|$)',
@@ -367,12 +409,10 @@ def fetch_shopify_image(product_url: str, brand: str) -> str:
             pass
         return ""
 
-    # Try the direct product URL first
     src = _get_image_src(json_url)
     if src:
         return src
 
-    # Fallback: reconstruct URL from SHOPIFY_BASES using normalized brand matching
     brand_lower = brand.lower().strip()
     brand_normalized = (brand_lower
         .replace(" outlet", "").replace("-fresh", "")
@@ -867,7 +907,11 @@ def render_closet_grid(products: list[dict], appearance: dict = None, mbti_type:
     # Fetch images for this page only
     with st.spinner("Loading your closet..."):
         image_urls = [
-            fetch_shopify_image(p.get("product_url", ""), p.get("brand", ""))
+            fetch_shopify_image(
+                p.get("product_url", ""),
+                p.get("brand", ""),
+                cached_image=p.get("_cached_image", ""),
+            )
             for p in page_products
         ]
 
@@ -1603,7 +1647,7 @@ def main():
     if "mbti"       not in st.session_state: st.session_state.mbti       = ""
 
     # ── Load data (cached) ─────────────────────────────────────────────────
-    products = load_products()
+    products = load_products_with_images()
     if not products:
         st.warning(
             "No scraped products found. "

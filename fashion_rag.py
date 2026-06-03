@@ -628,41 +628,53 @@ MBTI_FASHION_MAP = {
     "INTJ": {
         "archetype": "The Architect",
         "description": "Minimalist, structured, and intentional. Prefers clean lines and neutral palettes.",
-        "colors": ["black", "navy", "grey", "white"],
-        "styles": ["minimalist", "structured", "tailored", "monochrome"],
+        "colors": ["black", "navy", "charcoal", "white", "grey"],
+        "styles": ["minimalist", "structured", "tailored", "monochrome", "clean"],
         "categories": ["Jacket", "Shirt", "Jeans"],
-        "keywords": "minimalist structured tailored clean lines neutral colors professional",
+        "keywords": (
+            "minimalist structured tailored clean lines neutral professional "
+            "chino slim fit denim jacket crewneck button-down"
+        ),
     },
     "INTP": {
         "archetype": "The Logician",
         "description": "Casual and functional. Comfort over convention, with occasional quirky details.",
-        "colors": ["grey", "blue", "white", "olive"],
-        "styles": ["casual", "functional", "relaxed", "understated"],
+        "colors": ["grey", "blue", "white", "olive", "navy"],
+        "styles": ["casual", "functional", "relaxed", "understated", "everyday"],
         "categories": ["Jeans", "Shirt", "Shorts"],
-        "keywords": "casual comfortable relaxed functional understated everyday wear",
+        "keywords": (
+            "casual comfortable relaxed functional everyday wear "
+            "graphic tee hoodie sweatpant jogger cargo denim"
+        ),
     },
     "ENTJ": {
         "archetype": "The Commander",
         "description": "Bold, polished, and power-dressing. Commands attention with sharp silhouettes.",
-        "colors": ["black", "white", "red", "navy"],
-        "styles": ["bold", "polished", "power dressing", "sharp"],
-        "categories": ["Jacket", "Dress", "Shirt"],
-        "keywords": "bold polished power dressing sharp silhouette professional confident",
+        "colors": ["black", "white", "red", "navy", "charcoal"],
+        "styles": ["bold", "polished", "power dressing", "sharp", "confident"],
+        "categories": ["Jacket", "Shirt", "Jeans"],
+        "keywords": (
+            "bold polished sharp confident professional commanding "
+            "structured jacket chino tailored button-down blazer"
+        ),
     },
     "ENTP": {
         "archetype": "The Debater",
         "description": "Eclectic and trend-forward. Mixes unexpected pieces with confidence.",
-        "colors": ["mixed", "bright", "contrasting"],
-        "styles": ["eclectic", "trend-forward", "experimental", "mixed"],
+        "colors": ["mixed", "bright", "contrasting", "bold"],
+        "styles": ["eclectic", "trend-forward", "experimental", "streetwear"],
         "categories": ["Shirt", "Jacket", "Shorts"],
-        "keywords": "eclectic experimental trend-forward mixed patterns bright colors unique",
+        "keywords": (
+            "eclectic experimental trend-forward streetwear unique "
+            "graphic print oversized hoodie cargo jogger"
+        ),
     },
     # ── Diplomats ─────────────────────────────────────────────────────────────
     "INFJ": {
         "archetype": "The Advocate",
         "description": "Thoughtful and artistic. Drawn to flowing fabrics, earthy tones, and meaningful details.",
         "colors": ["earth tones", "burgundy", "forest green", "cream"],
-        "styles": ["artistic", "flowing", "earthy", "meaningful"],
+        "styles": ["artistic", "flowing", "earthy", "meaningful", "elegant"],
         "categories": ["Dress", "Blouse", "Skirt"],
         "keywords": "flowing artistic earthy tones meaningful details soft fabrics elegant",
     },
@@ -670,7 +682,7 @@ MBTI_FASHION_MAP = {
         "archetype": "The Mediator",
         "description": "Romantic and whimsical. Loves floral patterns, soft colors, and vintage-inspired pieces.",
         "colors": ["pastel", "floral", "soft pink", "lavender"],
-        "styles": ["romantic", "whimsical", "vintage", "floral"],
+        "styles": ["romantic", "whimsical", "vintage", "floral", "soft"],
         "categories": ["Dress", "Blouse", "Skirt"],
         "keywords": "romantic whimsical floral patterns pastel colors vintage inspired soft",
     },
@@ -678,7 +690,7 @@ MBTI_FASHION_MAP = {
         "archetype": "The Protagonist",
         "description": "Warm and expressive. Chooses vibrant colors and welcoming silhouettes.",
         "colors": ["warm tones", "coral", "yellow", "teal"],
-        "styles": ["expressive", "vibrant", "warm", "welcoming"],
+        "styles": ["expressive", "vibrant", "warm", "welcoming", "cheerful"],
         "categories": ["Dress", "Blouse", "Shirt"],
         "keywords": "vibrant expressive warm colors welcoming silhouette cheerful approachable",
     },
@@ -686,7 +698,7 @@ MBTI_FASHION_MAP = {
         "archetype": "The Campaigner",
         "description": "Playful and colorful. Embraces bold prints, layering, and spontaneous style.",
         "colors": ["bright", "multicolor", "bold prints"],
-        "styles": ["playful", "colorful", "layered", "spontaneous"],
+        "styles": ["playful", "colorful", "layered", "spontaneous", "fun"],
         "categories": ["Dress", "Shirt", "Skirt"],
         "keywords": "playful colorful bold prints layering spontaneous fun expressive",
     },
@@ -694,26 +706,32 @@ MBTI_FASHION_MAP = {
     "ISTJ": {
         "archetype": "The Logistician",
         "description": "Classic and reliable. Invests in timeless basics and well-made staples.",
-        "colors": ["navy", "white", "grey", "khaki"],
-        "styles": ["classic", "timeless", "reliable", "traditional"],
+        "colors": ["navy", "white", "grey", "khaki", "black"],
+        "styles": ["classic", "timeless", "reliable", "traditional", "neat"],
         "categories": ["Shirt", "Jeans", "Jacket"],
-        "keywords": "classic timeless reliable traditional well-made staples neutral wardrobe",
+        "keywords": (
+            "classic timeless reliable traditional well-made staples "
+            "chino straight leg denim polo crewneck button-down"
+        ),
     },
     "ISFJ": {
         "archetype": "The Defender",
         "description": "Soft and nurturing. Prefers comfortable, modest, and subtly feminine pieces.",
         "colors": ["soft blue", "blush", "cream", "sage"],
-        "styles": ["soft", "modest", "feminine", "comfortable"],
+        "styles": ["soft", "modest", "feminine", "comfortable", "delicate"],
         "categories": ["Blouse", "Dress", "Skirt"],
         "keywords": "soft modest feminine comfortable nurturing subtle delicate blouse dress",
     },
     "ESTJ": {
         "archetype": "The Executive",
         "description": "Polished and authoritative. Prefers structured, professional attire.",
-        "colors": ["navy", "charcoal", "white", "black"],
-        "styles": ["structured", "professional", "authoritative", "neat"],
-        "categories": ["Jacket", "Shirt", "Dress"],
-        "keywords": "structured professional authoritative neat polished business attire",
+        "colors": ["navy", "charcoal", "white", "black", "grey"],
+        "styles": ["structured", "professional", "authoritative", "neat", "polished"],
+        "categories": ["Jacket", "Shirt", "Jeans"],
+        "keywords": (
+            "structured professional authoritative neat polished business attire "
+            "chino slim fit jacket button-down crewneck"
+        ),
     },
     "ESFJ": {
         "archetype": "The Consul",
@@ -727,32 +745,38 @@ MBTI_FASHION_MAP = {
     "ISTP": {
         "archetype": "The Virtuoso",
         "description": "Utilitarian and cool. Favors functional pieces with an effortless edge.",
-        "colors": ["black", "grey", "olive", "tan"],
-        "styles": ["utilitarian", "cool", "functional", "effortless"],
+        "colors": ["black", "grey", "olive", "tan", "camo"],
+        "styles": ["utilitarian", "cool", "functional", "effortless", "streetwear"],
         "categories": ["Jeans", "Jacket", "Shorts"],
-        "keywords": "utilitarian functional cool effortless casual streetwear practical",
+        "keywords": (
+            "utilitarian functional cool effortless streetwear practical "
+            "cargo pants jogger hoodie denim overshirt"
+        ),
     },
     "ISFP": {
         "archetype": "The Adventurer",
         "description": "Artistic and sensory. Drawn to textures, unique prints, and self-expression.",
         "colors": ["earthy", "terracotta", "mustard", "rust"],
-        "styles": ["artistic", "sensory", "unique", "expressive"],
+        "styles": ["artistic", "sensory", "unique", "expressive", "bohemian"],
         "categories": ["Dress", "Blouse", "Skirt"],
         "keywords": "artistic unique prints textures self-expression earthy colors bohemian",
     },
     "ESTP": {
         "archetype": "The Entrepreneur",
         "description": "Bold and trend-chasing. Loves statement pieces and high-energy looks.",
-        "colors": ["bold", "black", "red", "white"],
-        "styles": ["bold", "trendy", "statement", "high-energy"],
+        "colors": ["bold", "black", "red", "white", "electric blue"],
+        "styles": ["bold", "trendy", "statement", "high-energy", "dynamic"],
         "categories": ["Jacket", "Shirt", "Jeans"],
-        "keywords": "bold trendy statement pieces high-energy streetwear confident dynamic",
+        "keywords": (
+            "bold trendy statement high-energy streetwear confident dynamic "
+            "graphic tee oversized denim jacket cargo"
+        ),
     },
     "ESFP": {
         "archetype": "The Entertainer",
         "description": "Fun and glamorous. Embraces sequins, bright colors, and show-stopping outfits.",
         "colors": ["bright", "gold", "hot pink", "electric blue"],
-        "styles": ["glamorous", "fun", "show-stopping", "vibrant"],
+        "styles": ["glamorous", "fun", "show-stopping", "vibrant", "festive"],
         "categories": ["Dress", "Skirt", "Blouse"],
         "keywords": "glamorous fun vibrant show-stopping bright colors party wear festive",
     },
