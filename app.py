@@ -695,6 +695,7 @@ def retrieve_top_products(
     model: SentenceTransformer,
     gender: str = "",
     refresh_seed: int = 0,
+    appearance: dict = None,
 ) -> list[dict]:
     """
     Return ALL relevant products ranked by cosine similarity, after filtering.
@@ -721,6 +722,12 @@ def retrieve_top_products(
     for score, product in zip(scores, products):
         if _is_blocked(product):
             continue
+        # Apply style-preference brand exclusions (e.g. minimalist excludes I AM GIA)
+        excluded_brands = set(appearance.get("female_excluded_brands", [])) if appearance else set()
+        if excluded_brands:
+            prod_brand = product.get("brand", "").lower().strip()
+            if prod_brand in excluded_brands:
+                continue
         p = dict(product)
         p["similarity"] = round(score, 4)
         scored.append(p)
@@ -1080,7 +1087,8 @@ def render_profile_summary(appearance: dict, mbti_type: str):
 
 def _save_appearance_and_advance(eye, hair, skin, gender, season, colors, style_note,
                                   body_type="", height="", face_shape="", hair_length="",
-                                  male_style_keywords="", female_style_keywords=""):
+                                  male_style_keywords="", female_style_keywords="",
+                                  female_excluded_brands=None):
     """Save appearance profile to session state and move to step 2."""
     st.session_state.appearance = {
         "eye_color":              eye.lower(),
@@ -1096,6 +1104,7 @@ def _save_appearance_and_advance(eye, hair, skin, gender, season, colors, style_
         "style_note":             style_note,
         "male_style_keywords":    male_style_keywords,
         "female_style_keywords":  female_style_keywords,
+        "female_excluded_brands": list(female_excluded_brands) if female_excluded_brands else [],
     }
     st.session_state.step = 2
     st.rerun()
@@ -1288,9 +1297,10 @@ def step_appearance():
         st.info("  \n".join(tips))
 
     # ── Color / Style section — different for men vs women ────────────────
-    # Initialise both keyword vars so the continue buttons always have them
+    # Initialise all keyword/exclusion vars so the continue buttons always have them
     male_style_keywords   = ""
     female_style_keywords = ""
+    female_excluded_brands = set()
 
     if is_male:
         # Men: skip seasonal color palette (it's a women's fashion concept)
@@ -1446,40 +1456,74 @@ If it feels off, override it below or visit [colorwise.me](https://colorwise.me)
         st.markdown("#### 👗 Style Preference")
         st.caption("Helps us prioritise the right types of clothing for your closet.")
 
+        # Each entry: keywords (for query) + exclude_brands (filtered from results)
+        # exclude_brands removes brands that are too far from this aesthetic
         FEMALE_STYLE_PREFS = {
             # ── Professional ──────────────────────────────────────────────
-            "Corporate / Office Wear": (
-                "blazer structured jacket tailored trousers dress pants pencil skirt "
-                "sheath dress work dress blouse button-down professional business "
-                "workwear office formal tailored midi structured top "
-                "mmlafleur gibson polished authority"
-            ),
-            "Smart Casual": (
-                "smart casual polished blouse midi skirt chino blazer brunch "
-                "neat put-together elevated everyday"
-            ),
+            "Corporate / Office Wear": {
+                "keywords": (
+                    "blazer structured jacket tailored trousers dress pants pencil skirt "
+                    "sheath dress work dress blouse button-down professional business "
+                    "workwear office formal tailored midi structured top polished authority "
+                    "mmlafleur gibson white warren"
+                ),
+                "exclude_brands": {"i am gia", "i.am.gia", "princess polly"},
+            },
+            "Smart Casual": {
+                "keywords": (
+                    "smart casual polished blouse midi skirt chino blazer brunch "
+                    "neat put-together elevated midi dress tailored relaxed"
+                ),
+                "exclude_brands": {"i am gia", "i.am.gia"},
+            },
             # ── Lifestyle ─────────────────────────────────────────────────
-            "Everyday / Casual": (
-                "casual everyday comfortable relaxed jeans top tee sneakers "
-                "weekend basics easygoing"
-            ),
-            "Going Out / Date Night": (
-                "dress midi wrap elegant evening party going out "
-                "feminine flirty statement"
-            ),
-            "Bohemian / Relaxed": (
-                "floral flowy maxi linen boho earthy wrap dress "
-                "free-spirited natural textured"
-            ),
-            "Minimalist / Clean": (
-                "minimalist neutral monochrome clean tonal structured simple "
-                "essential pared-back high-quality"
-            ),
+            "Everyday / Casual": {
+                "keywords": (
+                    "casual everyday comfortable relaxed jeans top tee sneakers "
+                    "weekend basics easygoing crew neck hoodie denim"
+                ),
+                "exclude_brands": set(),
+            },
+            "Going Out / Date Night": {
+                "keywords": (
+                    "dress midi wrap elegant evening party going out "
+                    "feminine flirty statement sequin ruched mini"
+                ),
+                "exclude_brands": set(),
+            },
+            "Bohemian / Relaxed": {
+                "keywords": (
+                    "floral flowy maxi linen boho earthy wrap dress "
+                    "free-spirited natural textured tiered ruffle"
+                ),
+                "exclude_brands": {"i am gia", "i.am.gia"},
+            },
+            "Minimalist / Clean": {
+                "keywords": (
+                    "minimalist neutral monochrome clean tonal essential "
+                    "simple classic straight-cut relaxed-fit quality fabric "
+                    "white warren allbirds frank oak cuts pistol lake "
+                    "crew neck v-neck straight leg trouser knit basic tee "
+                    "structured shirt midi dress understated refined"
+                ),
+                # Minimalist means no going-out or activewear-focused brands
+                "exclude_brands": {
+                    "i am gia", "i.am.gia",
+                    "buff bunny", "buffbunny-fresh",
+                    "ryderwear",
+                    "born primitive",
+                    "hylete",
+                    "2xu",
+                },
+            },
             # ── Active ────────────────────────────────────────────────────
-            "Athletic / Activewear": (
-                "legging sports bra tank top training athletic workout yoga gym "
-                "performance stretch breathable"
-            ),
+            "Athletic / Activewear": {
+                "keywords": (
+                    "legging sports bra tank top training athletic workout yoga gym "
+                    "performance stretch breathable activewear fitness"
+                ),
+                "exclude_brands": set(),
+            },
         }
 
         style_prefs_female = st.multiselect(
@@ -1494,7 +1538,12 @@ If it feels off, override it below or visit [colorwise.me](https://colorwise.me)
 
         # Combine keywords from all selected styles
         female_style_keywords = " ".join(
-            FEMALE_STYLE_PREFS[p] for p in style_prefs_female
+            FEMALE_STYLE_PREFS[p]["keywords"] for p in style_prefs_female
+        )
+        # Collect brands to exclude (intersection — only exclude if ALL selections exclude them)
+        # Use union so any excluded brand from any selection is filtered
+        female_excluded_brands = set.union(
+            *[FEMALE_STYLE_PREFS[p]["exclude_brands"] for p in style_prefs_female]
         )
 
         if len(style_prefs_female) == 1:
@@ -1512,6 +1561,7 @@ If it feels off, override it below or visit [colorwise.me](https://colorwise.me)
             face_shape=face_shape, hair_length=hair_length,
             male_style_keywords=male_style_keywords,
             female_style_keywords=female_style_keywords if not is_male else "",
+            female_excluded_brands=female_excluded_brands if not is_male else set(),
         )
 
     top_btn_placeholder.empty()
@@ -1524,6 +1574,7 @@ If it feels off, override it below or visit [colorwise.me](https://colorwise.me)
                 face_shape=face_shape, hair_length=hair_length,
                 male_style_keywords=male_style_keywords,
                 female_style_keywords=female_style_keywords if not is_male else "",
+                female_excluded_brands=female_excluded_brands if not is_male else set(),
             )
 
 
@@ -1664,6 +1715,7 @@ def step_closet(products: list[dict], product_embeddings: np.ndarray,
             query, products, product_embeddings, model,
             gender=appearance.get("gender", ""),
             refresh_seed=refresh_seed,
+            appearance=appearance,
         )
         st.session_state.recommended = recommended
         st.session_state.last_query  = query_key
