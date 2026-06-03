@@ -1343,6 +1343,14 @@ def build_combined_query(
             f"{male_style_kw}"
         )
 
+    # ── Female / non-binary style preference (occasion layer) ─────────────
+    female_style_kw = appearance.get("female_style_keywords", "")
+    female_style_phrase = ""
+    if female_style_kw:
+        female_style_phrase = (
+            f"My wardrobe focus is {female_style_kw}."
+        )
+
     # ── Body type phrase ───────────────────────────────────────────────────
     body_type   = appearance.get("body_type", "")
     body_phrase = ""
@@ -1413,7 +1421,8 @@ def build_combined_query(
 
     query_parts = [
         gender_phrase,
-        male_style_phrase,  # for men — empty string for women
+        male_style_phrase,      # men: replaces palette
+        female_style_phrase,    # women/nb: occasion layer on top of palette
         body_phrase,
         height_phrase,
         face_phrase,

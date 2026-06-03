@@ -372,6 +372,14 @@ SHOPIFY_STORES = [
     {"base_url": "https://www.pistolake.com",       "brand": "Pistol Lake",    "gender_hint": "Male"},
     # Grayers — smart casual shirts, chinos, and jackets for men
     {"base_url": "https://www.grayers.com",         "brand": "Grayers",        "gender_hint": "Male"},
+
+    # ── Women's Professional / Smart Casual ───────────────────────────────
+    # MM.LaFleur — workwear designed specifically for professional women
+    {"base_url": "https://www.mmlafleur.com",       "brand": "MM.LaFleur",     "gender_hint": "Female"},
+    # Gibson Look — smart casual women's tops, pants, and skirts
+    {"base_url": "https://www.gibsonlook.com",      "brand": "Gibson Look",    "gender_hint": "Female"},
+    # White + Warren — elevated cashmere and luxury basics, women's
+    {"base_url": "https://whiteandwarren.com",      "brand": "White + Warren", "gender_hint": "Female"},
 ]
 
 

@@ -73,6 +73,9 @@ SHOPIFY_BASES = {
     "taylor stitch":        "https://www.taylorstitch.com",
     "pistol lake":          "https://www.pistolake.com",
     "grayers":              "https://www.grayers.com",
+    "mm.lafleur":           "https://www.mmlafleur.com",
+    "gibson look":          "https://www.gibsonlook.com",
+    "white + warren":       "https://whiteandwarren.com",
 }
 
 FALLBACK_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='500' viewBox='0 0 400 500'%3E%3Crect width='400' height='500' fill='%23f3e8ff'/%3E%3Ctext x='50%25' y='45%25' font-family='sans-serif' font-size='48' text-anchor='middle' fill='%23c4a8e0'%3E👗%3C/text%3E%3Ctext x='50%25' y='58%25' font-family='sans-serif' font-size='14' text-anchor='middle' fill='%239e8aad'%3ENo image available%3C/text%3E%3C/svg%3E"
@@ -726,6 +729,11 @@ def retrieve_top_products(
     activewear_query    = any(kw in query_lower for kw in activewear_keywords)
     professional_query  = any(kw in query_lower for kw in professional_keywords)
 
+    # Also treat corporate office wear style preference as a professional query
+    female_style_kw = st.session_state.get("appearance", {}).get("female_style_keywords", "") if hasattr(st, 'session_state') else ""
+    if "corporate" in female_style_kw.lower() or "office" in female_style_kw.lower():
+        professional_query = True
+
     if professional_query:
         # For office/formal queries: completely exclude activewear
         # Activewear has no place in a corporate wardrobe recommendation
@@ -1044,21 +1052,22 @@ def render_profile_summary(appearance: dict, mbti_type: str):
 
 def _save_appearance_and_advance(eye, hair, skin, gender, season, colors, style_note,
                                   body_type="", height="", face_shape="", hair_length="",
-                                  male_style_keywords=""):
+                                  male_style_keywords="", female_style_keywords=""):
     """Save appearance profile to session state and move to step 2."""
     st.session_state.appearance = {
-        "eye_color":           eye.lower(),
-        "hair_color":          hair.lower(),
-        "skin_tone":           skin,
-        "gender":              gender,
-        "body_type":           body_type,
-        "height":              height,
-        "face_shape":          face_shape,
-        "hair_length":         hair_length,
-        "season":              season,
-        "colors":              colors,
-        "style_note":          style_note,
-        "male_style_keywords": male_style_keywords,
+        "eye_color":              eye.lower(),
+        "hair_color":             hair.lower(),
+        "skin_tone":              skin,
+        "gender":                 gender,
+        "body_type":              body_type,
+        "height":                 height,
+        "face_shape":             face_shape,
+        "hair_length":            hair_length,
+        "season":                 season,
+        "colors":                 colors,
+        "style_note":             style_note,
+        "male_style_keywords":    male_style_keywords,
+        "female_style_keywords":  female_style_keywords,
     }
     st.session_state.step = 2
     st.rerun()
@@ -1251,6 +1260,10 @@ def step_appearance():
         st.info("  \n".join(tips))
 
     # ── Color / Style section — different for men vs women ────────────────
+    # Initialise both keyword vars so the continue buttons always have them
+    male_style_keywords   = ""
+    female_style_keywords = ""
+
     if is_male:
         # Men: skip seasonal color palette (it's a women's fashion concept)
         # Instead ask about style preference — much more useful for menswear
@@ -1376,6 +1389,29 @@ If it feels off, override it below or visit [colorwise.me](https://colorwise.me)
         </div>
         """, unsafe_allow_html=True)
 
+        # ── Occasion / Style preference for women ─────────────────────────
+        st.markdown("#### 👗 Style Preference")
+        st.caption("Helps us prioritise the right types of clothing for your closet.")
+
+        FEMALE_STYLE_PREFS = {
+            "Everyday / Casual":          "casual everyday comfortable relaxed jeans top sneakers",
+            "Corporate / Office Wear":    "blazer structured jacket tailored trousers dress pants button-down professional workwear office",
+            "Smart Casual":               "smart casual polished blouse midi skirt chino blazer brunch",
+            "Going Out / Date Night":     "dress midi wrap elegant evening party going out",
+            "Athletic / Activewear":      "legging sports bra tank top training athletic workout yoga gym",
+            "Bohemian / Relaxed":         "floral flowy maxi linen boho earthy wrap dress",
+            "Minimalist / Clean":         "minimalist neutral monochrome clean tonal structured simple",
+        }
+
+        style_pref_female = st.selectbox(
+            "My wardrobe focus is mostly",
+            options=list(FEMALE_STYLE_PREFS.keys()),
+            label_visibility="visible",
+            key="female_style_pref",
+        )
+        female_style_keywords = FEMALE_STYLE_PREFS[style_pref_female]
+        st.caption(f"✓ We'll prioritise **{style_pref_female.lower()}** recommendations.")
+
     # ── Continue button ────────────────────────────────────────────────────
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("Continue to Personality →", type="primary",
@@ -1385,6 +1421,7 @@ If it feels off, override it below or visit [colorwise.me](https://colorwise.me)
             body_type=body_type, height=height,
             face_shape=face_shape, hair_length=hair_length,
             male_style_keywords=male_style_keywords,
+            female_style_keywords=female_style_keywords if not is_male else "",
         )
 
     top_btn_placeholder.empty()
@@ -1396,6 +1433,7 @@ If it feels off, override it below or visit [colorwise.me](https://colorwise.me)
                 body_type=body_type, height=height,
                 face_shape=face_shape, hair_length=hair_length,
                 male_style_keywords=male_style_keywords,
+                female_style_keywords=female_style_keywords if not is_male else "",
             )
 
 
