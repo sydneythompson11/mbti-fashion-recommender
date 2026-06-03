@@ -362,6 +362,16 @@ SHOPIFY_STORES = [
     {"base_url": "https://www.ryderwear.com",      "brand": "Ryderwear",       "gender_hint": "Unisex"},
     # 2XU — compression + performance sportswear, unisex
     {"base_url": "https://www.2xu.com",            "brand": "2XU",             "gender_hint": "Unisex"},
+
+    # ── Men's Professional / Smart Casual ─────────────────────────────────
+    # UNTUCKit — casual-to-office shirts designed to be worn untucked, men's
+    {"base_url": "https://www.untuckit.com",        "brand": "UNTUCKit",       "gender_hint": "Male"},
+    # Taylor Stitch — premium everyday + smart casual menswear
+    {"base_url": "https://www.taylorstitch.com",    "brand": "Taylor Stitch",  "gender_hint": "Male"},
+    # Pistol Lake — minimalist premium basics, men's
+    {"base_url": "https://www.pistolake.com",       "brand": "Pistol Lake",    "gender_hint": "Male"},
+    # Grayers — smart casual shirts, chinos, and jackets for men
+    {"base_url": "https://www.grayers.com",         "brand": "Grayers",        "gender_hint": "Male"},
 ]
 
 

@@ -69,6 +69,10 @@ SHOPIFY_BASES = {
     "born primitive":       "https://www.bornprimitive.com",
     "ryderwear":            "https://www.ryderwear.com",
     "2xu":                  "https://www.2xu.com",
+    "untuckit":             "https://www.untuckit.com",
+    "taylor stitch":        "https://www.taylorstitch.com",
+    "pistol lake":          "https://www.pistolake.com",
+    "grayers":              "https://www.grayers.com",
 }
 
 FALLBACK_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='500' viewBox='0 0 400 500'%3E%3Crect width='400' height='500' fill='%23f3e8ff'/%3E%3Ctext x='50%25' y='45%25' font-family='sans-serif' font-size='48' text-anchor='middle' fill='%23c4a8e0'%3E👗%3C/text%3E%3Ctext x='50%25' y='58%25' font-family='sans-serif' font-size='14' text-anchor='middle' fill='%239e8aad'%3ENo image available%3C/text%3E%3C/svg%3E"
@@ -1039,20 +1043,22 @@ def render_profile_summary(appearance: dict, mbti_type: str):
 # =============================================================================
 
 def _save_appearance_and_advance(eye, hair, skin, gender, season, colors, style_note,
-                                  body_type="", height="", face_shape="", hair_length=""):
+                                  body_type="", height="", face_shape="", hair_length="",
+                                  male_style_keywords=""):
     """Save appearance profile to session state and move to step 2."""
     st.session_state.appearance = {
-        "eye_color":   eye.lower(),
-        "hair_color":  hair.lower(),
-        "skin_tone":   skin,
-        "gender":      gender,
-        "body_type":   body_type,
-        "height":      height,
-        "face_shape":  face_shape,
-        "hair_length": hair_length,
-        "season":      season,
-        "colors":      colors,
-        "style_note":  style_note,
+        "eye_color":           eye.lower(),
+        "hair_color":          hair.lower(),
+        "skin_tone":           skin,
+        "gender":              gender,
+        "body_type":           body_type,
+        "height":              height,
+        "face_shape":          face_shape,
+        "hair_length":         hair_length,
+        "season":              season,
+        "colors":              colors,
+        "style_note":          style_note,
+        "male_style_keywords": male_style_keywords,
     }
     st.session_state.step = 2
     st.rerun()
@@ -1244,23 +1250,84 @@ def step_appearance():
         if face_tip: tips.append(f"**{face_shape} face:** {face_tip}")
         st.info("  \n".join(tips))
 
-    # Live palette preview
-    season = derive_season(eye.lower(), hair.lower(), skin)
-    colors = SEASON_COLORS[season]
-    style_note = SEASON_STYLE_NOTES[season]
+    # ── Color / Style section — different for men vs women ────────────────
+    if is_male:
+        # Men: skip seasonal color palette (it's a women's fashion concept)
+        # Instead ask about style preference — much more useful for menswear
+        st.markdown("#### 🧢 Your Style Preference")
+        st.caption(
+            "This helps us match your personality to the right aesthetic — "
+            "from clean basics to streetwear to business casual."
+        )
 
-    season_colors_map = {
-        "Spring": "#fff3e0", "Summer": "#e8f5e9",
-        "Autumn": "#fbe9e7", "Winter": "#e3f2fd",
-    }
-    bg = season_colors_map.get(season, "#f3e8ff")
+        MALE_STYLE_PREFS = {
+            "Smart Casual / Business Casual": {
+                "keywords": "chino slim fit button-down blazer structured clean polished smart",
+                "colors": ["navy", "charcoal", "white", "grey", "khaki"],
+                "note": "clean, polished pieces that work from desk to dinner",
+            },
+            "Streetwear / Hype": {
+                "keywords": "oversized graphic tee hoodie cargo jogger streetwear bold",
+                "colors": ["black", "white", "grey", "bold prints"],
+                "note": "bold graphics, oversized silhouettes, and statement pieces",
+            },
+            "Athletic / Performance": {
+                "keywords": "athletic performance training workout gym fitted stretch",
+                "colors": ["black", "grey", "navy", "bold"],
+                "note": "functional, performance-focused pieces that move with you",
+            },
+            "Classic / Preppy": {
+                "keywords": "classic polo crewneck straight leg chino timeless clean",
+                "colors": ["navy", "white", "khaki", "grey"],
+                "note": "timeless staples — polos, straight-leg denim, clean basics",
+            },
+            "Minimalist / Clean": {
+                "keywords": "minimalist neutral clean simple tonal monochrome basic",
+                "colors": ["black", "white", "grey", "navy", "tan"],
+                "note": "simple, tonal, high-quality basics with no noise",
+            },
+            "Rugged / Outdoorsy": {
+                "keywords": "rugged durable outdoor flannel work boot cargo utility",
+                "colors": ["olive", "tan", "brown", "rust", "camo"],
+                "note": "durable, functional pieces with an outdoor edge",
+            },
+        }
 
-    # ── Manual palette override ────────────────────────────────────────────
-    st.markdown("#### 🎨 Your Color Palette")
+        style_pref = st.selectbox(
+            "My style is closest to",
+            options=list(MALE_STYLE_PREFS.keys()),
+            label_visibility="visible",
+            key="male_style_pref",
+        )
+        pref_data = MALE_STYLE_PREFS[style_pref]
+        st.caption(f"✓ {pref_data['note']}")
 
-    with st.expander("ℹ️ How is my palette determined?", expanded=False):
-        st.markdown("""
-**Seasonal Color Analysis** groups people into 4 palettes based on their
+        # For men: season is neutral "All", colors come from style preference
+        season     = "All"
+        colors     = pref_data["colors"]
+        style_note = pref_data["note"]
+        # Store style keywords for the query
+        male_style_keywords = pref_data["keywords"]
+
+    else:
+        # Women + non-binary: full seasonal color palette analysis
+        male_style_keywords = ""
+        season = derive_season(eye.lower(), hair.lower(), skin)
+        colors = SEASON_COLORS[season]
+        style_note = SEASON_STYLE_NOTES[season]
+
+        season_colors_map = {
+            "Spring": "#fff3e0", "Summer": "#e8f5e9",
+            "Autumn": "#fbe9e7", "Winter": "#e3f2fd",
+        }
+        bg = season_colors_map.get(season, "#f3e8ff")
+
+        # ── Manual palette override ────────────────────────────────────────
+        st.markdown("#### 🎨 Your Color Palette")
+
+        with st.expander("ℹ️ How is my palette determined?", expanded=False):
+            st.markdown("""
+**Seasonal Color Analysis** groups people into 4 palettes based on your
 natural coloring:
 
 | Season | Undertone | Depth | Best colors |
@@ -1270,63 +1337,46 @@ natural coloring:
 | 🍂 Autumn | Warm | Deep/muted | Rust, olive, mustard, terracotta |
 | ❄️ Winter | Cool | Deep/bright | Black, navy, ruby red, emerald |
 
-**How we calculate yours:**
-We look at three signals — skin tone (strongest), hair color (medium),
-and eye color (weakest) — and combine them using weighted scoring.
+We weight skin tone (3×) > hair color (2×) > eye color (1×).
+If it feels off, override it below or visit [colorwise.me](https://colorwise.me).
+            """)
 
-**Why it might be off:**
-- Screen colors vary between devices
-- Lighting affects how you perceive your own coloring
-- Hair may be dyed rather than natural
-- Undertones are subtle and hard to self-identify digitally
-
-If the result doesn't feel right, override it below or visit
-[colorwise.me](https://colorwise.me) for a more detailed analysis.
-        """)
-
-    # Check if user wants to override
-    override = st.checkbox(
-        "🔄 Override — I know my palette (or used colorwise.me)",
-        key="palette_override",
-    )
-
-    if override:
-        st.markdown(
-            "Not sure? Take the detailed test at "
-            "[colorwise.me](https://colorwise.me) — it's free and more accurate."
+        override = st.checkbox(
+            "🔄 Override — I know my palette (or used colorwise.me)",
+            key="palette_override",
         )
-        manual_season = st.radio(
-            "Choose your seasonal palette:",
-            options=["Spring", "Summer", "Autumn", "Winter"],
-            horizontal=True,
-            key="manual_season",
-            captions=[
-                "Warm + light/bright",
-                "Cool + light/muted",
-                "Warm + deep/muted",
-                "Cool + deep/bright",
-            ],
-        )
-        season     = manual_season
-        colors     = SEASON_COLORS[season]
-        style_note = SEASON_STYLE_NOTES[season]
-        bg         = season_colors_map.get(season, "#f3e8ff")
-        st.caption(f"✓ Using your chosen palette: **{season}**")
 
-    st.markdown(f"""
-    <div style="background:{bg};border-radius:12px;padding:1rem 1.5rem;margin:0.5rem 0">
-        <strong>{'Your' if not override else 'Selected'} Seasonal Palette: {season}</strong>
-        {'<span style="font-size:0.8rem;color:#888"> (auto-detected)</span>' if not override else ''}
-        <br>
-        <span style="font-size:0.9rem;color:#555">
-            Best colors: {', '.join(colors[:6])}<br>
-            {style_note}
-        </span>
-    </div>
-    """, unsafe_allow_html=True)
+        if override:
+            st.markdown(
+                "Not sure? [colorwise.me](https://colorwise.me) — free and more accurate."
+            )
+            manual_season = st.radio(
+                "Choose your seasonal palette:",
+                options=["Spring", "Summer", "Autumn", "Winter"],
+                horizontal=True,
+                key="manual_season",
+                captions=["Warm + light/bright","Cool + light/muted",
+                          "Warm + deep/muted","Cool + deep/bright"],
+            )
+            season     = manual_season
+            colors     = SEASON_COLORS[season]
+            style_note = SEASON_STYLE_NOTES[season]
+            bg         = season_colors_map.get(season, "#f3e8ff")
+            st.caption(f"✓ Using your chosen palette: **{season}**")
 
-    # ── Continue button — shown both here (bottom) and repeated at top ────
-    # The top shortcut is rendered via a placeholder we fill after computing values.
+        st.markdown(f"""
+        <div style="background:{bg};border-radius:12px;padding:1rem 1.5rem;margin:0.5rem 0">
+            <strong>{'Your' if not override else 'Selected'} Seasonal Palette: {season}</strong>
+            {'<span style="font-size:0.8rem;color:#888"> (auto-detected)</span>' if not override else ''}
+            <br>
+            <span style="font-size:0.9rem;color:#555">
+                Best colors: {', '.join(colors[:6])}<br>
+                {style_note}
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # ── Continue button ────────────────────────────────────────────────────
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("Continue to Personality →", type="primary",
                  use_container_width=True, key="continue_bottom"):
@@ -1334,9 +1384,9 @@ If the result doesn't feel right, override it below or visit
             eye, hair, skin, gender, season, colors, style_note,
             body_type=body_type, height=height,
             face_shape=face_shape, hair_length=hair_length,
+            male_style_keywords=male_style_keywords,
         )
 
-    # Also fill the top shortcut placeholder now that we have all values
     top_btn_placeholder.empty()
     with top_btn_placeholder:
         if st.button("Continue to Personality →", type="primary",
@@ -1345,6 +1395,7 @@ If the result doesn't feel right, override it below or visit
                 eye, hair, skin, gender, season, colors, style_note,
                 body_type=body_type, height=height,
                 face_shape=face_shape, hair_length=hair_length,
+                male_style_keywords=male_style_keywords,
             )
 
 

@@ -1333,6 +1333,16 @@ def build_combined_query(
                 "including women's, men's, and unisex styles."
             )
 
+    # ── Male style preference (replaces seasonal palette for men) ─────────
+    male_style_kw = appearance.get("male_style_keywords", "")
+    male_style_phrase = ""
+    if male_style_kw:
+        style_note_male = appearance.get("style_note", "")
+        male_style_phrase = (
+            f"My style preference is {style_note_male}. "
+            f"{male_style_kw}"
+        )
+
     # ── Body type phrase ───────────────────────────────────────────────────
     body_type   = appearance.get("body_type", "")
     body_phrase = ""
@@ -1394,18 +1404,31 @@ def build_combined_query(
                 f"My hair is {hair_length}. {hl['note']}. {hl['keywords']}"
             )
 
-    # ── Color merge ────────────────────────────────────────────────────────
-    all_colors = colors[:4] + [c for c in mbti["colors"] if c not in colors][:2]
+    # ── Color merge (skip for men who use style preference instead) ────────
+    if male_style_kw:
+        # Men: colors come from style preference, not seasonal palette
+        all_colors = colors + [c for c in mbti["colors"] if c not in colors][:2]
+    else:
+        all_colors = colors[:4] + [c for c in mbti["colors"] if c not in colors][:2]
 
     query_parts = [
         gender_phrase,
+        male_style_phrase,  # for men — empty string for women
         body_phrase,
         height_phrase,
         face_phrase,
         hair_len_phrase,
-        f"My seasonal color palette is {season}, so I look best in "
-        f"{', '.join(colors[:5])}.",
-        f"I suit {style_note}.",
+    ]
+
+    # Color/palette section — only for women/non-binary
+    if not male_style_kw:
+        query_parts += [
+            f"My seasonal color palette is {season}, so I look best in "
+            f"{', '.join(colors[:5])}.",
+            f"I suit {style_note}.",
+        ]
+
+    query_parts += [
         f"I am a {mbti['archetype']} personality ({mbti_type}): {mbti['description']}",
         f"My preferred clothing colors are {', '.join(all_colors)}.",
         f"My style is {', '.join(mbti['styles'])}.",
