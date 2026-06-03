@@ -76,6 +76,9 @@ SHOPIFY_BASES = {
     "mm.lafleur":           "https://www.mmlafleur.com",
     "gibson look":          "https://www.gibsonlook.com",
     "white + warren":       "https://whiteandwarren.com",
+    "tentree":              "https://www.tentree.com",
+    "outerknown":           "https://www.outerknown.com",
+    "universal standard":   "https://www.universalstandard.com",
 }
 
 FALLBACK_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='500' viewBox='0 0 400 500'%3E%3Crect width='400' height='500' fill='%23f3e8ff'/%3E%3Ctext x='50%25' y='45%25' font-family='sans-serif' font-size='48' text-anchor='middle' fill='%23c4a8e0'%3E👗%3C/text%3E%3Ctext x='50%25' y='58%25' font-family='sans-serif' font-size='14' text-anchor='middle' fill='%239e8aad'%3ENo image available%3C/text%3E%3C/svg%3E"
@@ -497,7 +500,9 @@ def embed_products(_model: SentenceTransformer, product_tuples: tuple) -> np.nda
         "hoodie":     "casual gym warmup athletic streetwear",
         "sweatshirt": "casual gym warmup athletic streetwear",
         # ── Professional / office signals ─────────────────────────────────
-        "mmlafleur":      "workwear office corporate professional women blazer dress pant blouse",
+        "tentree":        "sustainable everyday casual eco-friendly basics unisex",
+        "outerknown":     "sustainable surf casual men shirt chino tee outdoor",
+        "universal standard": "size-inclusive women dress basics midi linen quality",
         "mm.lafleur":     "workwear office corporate professional women blazer dress pant blouse",
         "gibson look":    "smart casual office professional women blouse pant skirt polished",
         "white + warren": "elevated luxury cashmere professional refined women",

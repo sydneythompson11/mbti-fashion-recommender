@@ -363,6 +363,14 @@ SHOPIFY_STORES = [
     # 2XU — compression + performance sportswear, unisex
     {"base_url": "https://www.2xu.com",            "brand": "2XU",             "gender_hint": "Unisex"},
 
+    # ── Sustainable / Everyday ────────────────────────────────────────────
+    # tentree — sustainable everyday basics, men's and women's
+    {"base_url": "https://www.tentree.com",         "brand": "tentree",         "gender_hint": "Unisex"},
+    # Outerknown — sustainable surf-inspired men's shirts, tees, chinos
+    {"base_url": "https://www.outerknown.com",       "brand": "Outerknown",      "gender_hint": "Male"},
+    # Universal Standard — size-inclusive women's dresses and basics (XS–5X)
+    {"base_url": "https://www.universalstandard.com","brand": "Universal Standard","gender_hint": "Female"},
+
     # ── Men's Professional / Smart Casual ─────────────────────────────────
     # UNTUCKit — casual-to-office shirts designed to be worn untucked, men's
     {"base_url": "https://www.untuckit.com",        "brand": "UNTUCKit",       "gender_hint": "Male"},
