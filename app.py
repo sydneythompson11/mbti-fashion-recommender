@@ -91,14 +91,18 @@ from fashion_rag import (
     VALID_SKIN_TONES,
     VALID_GENDER_OPTIONS,
     GENDER_TO_DATASET,
-    VALID_BODY_TYPES,
-    VALID_HEIGHTS,
+    # Gender-adaptive appearance constants
+    VALID_BODY_TYPES_FEMALE, VALID_BODY_TYPES_MALE,
+    BODY_TYPE_STYLE_FEMALE,  BODY_TYPE_STYLE_MALE,
+    VALID_HEIGHTS_FEMALE,    VALID_HEIGHTS_MALE,
+    HEIGHT_STYLE_FEMALE,     HEIGHT_STYLE_MALE,
     VALID_FACE_SHAPES,
-    VALID_HAIR_LENGTHS,
-    BODY_TYPE_STYLE,
-    HEIGHT_STYLE,
-    FACE_SHAPE_NECKLINE,
-    HAIR_LENGTH_STYLE,
+    FACE_SHAPE_NECKLINE_FEMALE, FACE_SHAPE_NECKLINE_MALE,
+    VALID_HAIR_LENGTHS_FEMALE,  VALID_HAIR_LENGTHS_MALE,
+    HAIR_LENGTH_STYLE_FEMALE,   HAIR_LENGTH_STYLE_MALE,
+    # Keep unified defaults for build_combined_query compatibility
+    BODY_TYPE_STYLE, HEIGHT_STYLE, FACE_SHAPE_NECKLINE,
+    HAIR_LENGTH_STYLE, VALID_HAIR_LENGTHS, VALID_HEIGHTS,
     derive_season,
     build_combined_query,
     build_mbti_query,
@@ -1159,8 +1163,37 @@ def step_appearance():
 
     # ── Body Type, Height, Face Shape, Hair Length ─────────────────────────
     st.markdown("#### 👤 Body & Style Traits")
+
+    # Determine which option sets to show based on gender selection
+    is_male = (gender == "Man")
+    is_female = (gender == "Woman")
+    # Non-binary / other → show combined / neutral options (use female as base)
+
+    if is_male:
+        body_type_opts   = VALID_BODY_TYPES_MALE
+        body_style_map   = BODY_TYPE_STYLE_MALE
+        height_opts      = VALID_HEIGHTS_MALE
+        height_style_map = HEIGHT_STYLE_MALE
+        hair_length_opts = VALID_HAIR_LENGTHS_MALE
+        hair_style_map   = HAIR_LENGTH_STYLE_MALE
+        face_style_map   = FACE_SHAPE_NECKLINE_MALE
+        body_caption     = "Helps us recommend the right fit and silhouette for your build."
+        hair_caption     = "Affects collar and neckline recommendations."
+        face_caption     = "Affects collar style recommendations."
+    else:
+        body_type_opts   = VALID_BODY_TYPES_FEMALE
+        body_style_map   = BODY_TYPE_STYLE_FEMALE
+        height_opts      = VALID_HEIGHTS_FEMALE
+        height_style_map = HEIGHT_STYLE_FEMALE
+        hair_length_opts = VALID_HAIR_LENGTHS_FEMALE
+        hair_style_map   = HAIR_LENGTH_STYLE_FEMALE
+        face_style_map   = FACE_SHAPE_NECKLINE_FEMALE
+        body_caption     = "Helps us recommend the right silhouettes, necklines, and proportions."
+        hair_caption     = "Affects neckline and collar visibility."
+        face_caption     = "Affects neckline recommendations."
+
     st.caption(
-        "These help us recommend the right silhouettes, necklines, and proportions. "
+        f"{body_caption} "
         "All fields are optional — skip any you'd rather not answer."
     )
 
@@ -1170,13 +1203,13 @@ def step_appearance():
         st.markdown("**Body Type**")
         body_type = st.selectbox(
             "Body type",
-            options=VALID_BODY_TYPES,
+            options=body_type_opts,
             label_visibility="collapsed",
             key="body_type_sel",
         )
 
         st.markdown("**Face Shape**")
-        st.caption("Affects neckline recommendations")
+        st.caption(face_caption)
         face_shape = st.selectbox(
             "Face shape",
             options=VALID_FACE_SHAPES,
@@ -1188,27 +1221,27 @@ def step_appearance():
         st.markdown("**Height**")
         height = st.selectbox(
             "Height",
-            options=VALID_HEIGHTS,
+            options=height_opts,
             label_visibility="collapsed",
             key="height_sel",
         )
 
         st.markdown("**Hair Length**")
-        st.caption("Affects neckline and collar visibility")
+        st.caption(hair_caption)
         hair_length = st.selectbox(
             "Hair length",
-            options=VALID_HAIR_LENGTHS,
+            options=hair_length_opts,
             label_visibility="collapsed",
             key="hair_length_sel",
         )
 
     # Show a quick style tip based on selections
-    body_tip  = BODY_TYPE_STYLE.get(body_type, {}).get("note", "")
-    face_tip  = FACE_SHAPE_NECKLINE.get(face_shape, {}).get("note", "")
+    body_tip = body_style_map.get(body_type, {}).get("note", "")
+    face_tip = face_style_map.get(face_shape, {}).get("note", "")
     if body_tip or face_tip:
         tips = []
-        if body_tip:   tips.append(f"**{body_type}:** {body_tip}")
-        if face_tip:   tips.append(f"**{face_shape} face:** {face_tip}")
+        if body_tip: tips.append(f"**{body_type}:** {body_tip}")
+        if face_tip: tips.append(f"**{face_shape} face:** {face_tip}")
         st.info("  \n".join(tips))
 
     # Live palette preview

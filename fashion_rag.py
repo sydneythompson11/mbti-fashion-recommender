@@ -212,56 +212,111 @@ GENDER_TO_DATASET = {
 # Traits like eye shape, nose, and lips are intentionally excluded — they
 # affect makeup, not clothing, and including them would feel invasive.
 
-# ── Body Type ─────────────────────────────────────────────────────────────────
-VALID_BODY_TYPES = [
+# =============================================================================
+# Additional Appearance Traits → Style Guidance  (Gender-Adaptive)
+# =============================================================================
+# Body type, height, hair length, and neckline guidance are presented
+# differently based on gender. The face shape options are the same for
+# everyone — only the styling note changes.
+
+# ── Body Type — Women ─────────────────────────────────────────────────────────
+VALID_BODY_TYPES_FEMALE = [
     "Petite",
     "Tall",
     "Curvy / Hourglass",
-    "Athletic / Muscular",
+    "Athletic / Toned",
     "Straight / Rectangular",
-    "Plus Size",
+    "Plus Size / Full-Figured",
     "Pear / Triangle",
     "Apple / Round",
     "Prefer not to say",
 ]
 
-BODY_TYPE_STYLE = {
+BODY_TYPE_STYLE_FEMALE = {
     "Petite": {
-        "keywords": "petite fitted cropped high-waist vertical lines monochrome",
+        "keywords": "petite fitted cropped high-waist vertical lines monochrome elongating",
         "note": "fitted silhouettes, cropped tops, high-waisted bottoms, and vertical "
                 "lines to elongate the frame",
     },
     "Tall": {
-        "keywords": "tall maxi midi wide-leg bold patterns horizontal stripes oversized",
+        "keywords": "tall maxi midi wide-leg bold patterns horizontal oversized full-length",
         "note": "maxi and midi lengths, wide-leg trousers, bold patterns, and "
-                "oversized silhouettes that fill the frame",
+                "oversized silhouettes that fill the frame beautifully",
     },
     "Curvy / Hourglass": {
-        "keywords": "hourglass wrap fitted waist-defining belted stretchy bodycon",
-        "note": "wrap styles, belted waists, and fitted pieces that define the waist",
+        "keywords": "hourglass wrap fitted waist-defining belted stretchy bodycon midi",
+        "note": "wrap dresses, belted waists, and fitted midi pieces that define the waist",
     },
-    "Athletic / Muscular": {
-        "keywords": "athletic structured feminine soft draped flowy A-line",
-        "note": "soft draping, A-line skirts, and flowy fabrics that add softness",
+    "Athletic / Toned": {
+        "keywords": "athletic feminine soft draped flowy A-line ruffle structured",
+        "note": "soft draping, A-line skirts, ruffles, and flowy fabrics that add femininity",
     },
     "Straight / Rectangular": {
-        "keywords": "rectangular peplum ruffles layered textured create curves",
-        "note": "peplum tops, ruffles, and layered pieces that create the illusion "
-                "of curves",
+        "keywords": "rectangular peplum ruffles layered textured create curves belt",
+        "note": "peplum tops, ruffles, belted waists, and layered pieces that "
+                "create the illusion of curves",
     },
-    "Plus Size": {
-        "keywords": "plus size flattering wrap empire waist dark solid structured",
-        "note": "wrap styles, empire waists, structured fabrics, and solid colors "
-                "that flatter and support",
+    "Plus Size / Full-Figured": {
+        "keywords": "plus size wrap empire waist V-neck dark solid structured flattering",
+        "note": "wrap styles, empire waists, V-necks, and structured fabrics "
+                "that elongate and flatter",
     },
     "Pear / Triangle": {
-        "keywords": "pear triangle A-line wide neck statement top dark bottom",
-        "note": "statement tops, wide necklines, and A-line skirts that balance "
-                "the silhouette",
+        "keywords": "pear triangle A-line wide neck statement top dark bottom balance",
+        "note": "statement tops, wide necklines, A-line skirts, and darker bottoms "
+                "to balance the silhouette",
     },
     "Apple / Round": {
-        "keywords": "apple round empire waist V-neck flowy tunic elongate",
+        "keywords": "apple round empire waist V-neck flowy tunic elongate vertical",
         "note": "V-necks, empire waists, and flowy tunics that elongate the torso",
+    },
+    "Prefer not to say": {
+        "keywords": "versatile comfortable well-fitting flattering",
+        "note": "versatile, comfortable pieces",
+    },
+}
+
+# ── Body Type — Men ───────────────────────────────────────────────────────────
+VALID_BODY_TYPES_MALE = [
+    "Slim / Lean",
+    "Average / Medium Build",
+    "Athletic / Muscular",
+    "Tall and Slim",
+    "Stocky / Broad",
+    "Plus Size / Big & Tall",
+    "Prefer not to say",
+]
+
+BODY_TYPE_STYLE_MALE = {
+    "Slim / Lean": {
+        "keywords": "slim layered textured structured shoulder detail straight leg",
+        "note": "structured jackets, layered looks, and straight-leg trousers "
+                "that add visual bulk and definition",
+    },
+    "Average / Medium Build": {
+        "keywords": "regular fit versatile straight leg chino crew neck classic",
+        "note": "most fits work well — regular fit chinos, straight-leg denim, "
+                "and classic crew necks",
+    },
+    "Athletic / Muscular": {
+        "keywords": "athletic slim taper fitted performance stretch breathable",
+        "note": "tapered fits, slim-fit shirts, and performance fabrics with stretch "
+                "that fit without restricting movement",
+    },
+    "Tall and Slim": {
+        "keywords": "tall full-length regular rise wide-leg oversized bold",
+        "note": "full-length trousers, regular rise jeans, and bolder patterns "
+                "that fill the frame",
+    },
+    "Stocky / Broad": {
+        "keywords": "structured vertical stripe dark solid slim taper fitted jacket",
+        "note": "vertical stripes, dark solids, slim-tapered trousers, and "
+                "structured jackets that create a streamlined silhouette",
+    },
+    "Plus Size / Big & Tall": {
+        "keywords": "big tall relaxed fit straight leg dark solid structured breathable",
+        "note": "relaxed or straight fits, darker tones, and structured pieces "
+                "with quality fabrics that drape well",
     },
     "Prefer not to say": {
         "keywords": "versatile comfortable well-fitting",
@@ -270,20 +325,28 @@ BODY_TYPE_STYLE = {
 }
 
 # ── Height ────────────────────────────────────────────────────────────────────
-VALID_HEIGHTS = [
+# Same options for everyone; height thresholds differ slightly by gender
+# but the styling logic is equivalent.
+VALID_HEIGHTS_FEMALE = [
     "Short (under 5'4\")",
     "Average (5'4\" – 5'7\")",
     "Tall (5'8\" and above)",
 ]
 
-HEIGHT_STYLE = {
+VALID_HEIGHTS_MALE = [
+    "Short (under 5'8\")",
+    "Average (5'8\" – 5'11\")",
+    "Tall (6'0\" and above)",
+]
+
+HEIGHT_STYLE_FEMALE = {
     "Short (under 5'4\")": {
-        "keywords": "petite cropped high-waist vertical stripe monochrome elongating",
+        "keywords": "petite cropped high-waist vertical stripe monochrome elongating midi",
         "note": "cropped styles, high-waisted cuts, and vertical patterns to "
                 "create the illusion of height",
     },
     "Average (5'4\" – 5'7\")": {
-        "keywords": "versatile any length midi knee-length proportional",
+        "keywords": "versatile any length midi knee-length proportional balanced",
         "note": "most silhouettes and lengths work well",
     },
     "Tall (5'8\" and above)": {
@@ -293,19 +356,42 @@ HEIGHT_STYLE = {
     },
 }
 
+HEIGHT_STYLE_MALE = {
+    "Short (under 5'8\")": {
+        "keywords": "slim taper vertical stripe monochrome proportional fitted jacket",
+        "note": "slim and tapered fits, vertical patterns, and fitted jackets "
+                "that create a taller, leaner line",
+    },
+    "Average (5'8\" – 5'11\")": {
+        "keywords": "versatile regular fit straight leg proportional any length",
+        "note": "most fits work well — regular fit and straight-leg are ideal",
+    },
+    "Tall (6'0\" and above)": {
+        "keywords": "tall full-length regular rise wide-leg relaxed oversized",
+        "note": "full-length trousers, relaxed fits, and bolder patterns "
+                "that suit a taller frame",
+    },
+}
+
+# Unified accessors used by build_combined_query
+VALID_HEIGHTS = VALID_HEIGHTS_FEMALE   # default; overridden in app.py per gender
+HEIGHT_STYLE  = HEIGHT_STYLE_FEMALE
+
 # ── Face Shape ────────────────────────────────────────────────────────────────
-# Face shape primarily affects neckline recommendations.
+# Same face shapes for everyone. Style guidance differs:
+# Women → neckline recommendations
+# Men   → collar and shirt-opening recommendations
 VALID_FACE_SHAPES = [
     "Oval",
     "Round",
     "Square / Angular",
-    "Heart",
+    "Heart / Inverted Triangle",
     "Oblong / Rectangle",
     "Diamond",
     "Not sure",
 ]
 
-FACE_SHAPE_NECKLINE = {
+FACE_SHAPE_NECKLINE_FEMALE = {
     "Oval": {
         "keywords": "any neckline versatile balanced proportions",
         "note": "most necklines work — oval faces are the most versatile",
@@ -318,7 +404,7 @@ FACE_SHAPE_NECKLINE = {
         "keywords": "round neck scoop neck soft curved neckline off-shoulder",
         "note": "round, scoop, and off-shoulder necklines that soften angular features",
     },
-    "Heart": {
+    "Heart / Inverted Triangle": {
         "keywords": "V-neck scoop sweetheart neckline balance wide jaw",
         "note": "V-necks and scoop necklines that draw attention downward and "
                 "balance a wider forehead",
@@ -338,39 +424,114 @@ FACE_SHAPE_NECKLINE = {
     },
 }
 
+FACE_SHAPE_NECKLINE_MALE = {
+    "Oval": {
+        "keywords": "any collar crew neck V-neck button-down versatile",
+        "note": "any collar style works — crew necks, V-necks, and button-downs "
+                "all complement an oval face",
+    },
+    "Round": {
+        "keywords": "V-neck open collar button-down spread collar elongating",
+        "note": "V-necks, open collars, and spread collar shirts that elongate "
+                "and slim the face",
+    },
+    "Square / Angular": {
+        "keywords": "crew neck round collar soft curved collar casual",
+        "note": "crew necks and rounded collars that soften strong angular features",
+    },
+    "Heart / Inverted Triangle": {
+        "keywords": "crew neck round neck wide collar balance narrower chin",
+        "note": "crew necks and wider collars that balance a broader forehead "
+                "with a narrower chin",
+    },
+    "Oblong / Rectangle": {
+        "keywords": "crew neck wide collar horizontal pattern turtleneck",
+        "note": "crew necks, turtlenecks, and wider collars that add width "
+                "and break up the length of the face",
+    },
+    "Diamond": {
+        "keywords": "wide collar spread collar button-down balance cheekbones",
+        "note": "spread collars and wider openings that balance prominent cheekbones",
+    },
+    "Not sure": {
+        "keywords": "versatile collar comfortable any neckline",
+        "note": "any collar style will work",
+    },
+}
+
+# Unified accessor (default to female; overridden in app.py per gender)
+FACE_SHAPE_NECKLINE = FACE_SHAPE_NECKLINE_FEMALE
+
 # ── Hair Length ───────────────────────────────────────────────────────────────
-# Hair length affects neckline and collar visibility.
-VALID_HAIR_LENGTHS = [
-    "Short (above ears / pixie)",
-    "Short-medium (ear to chin / bob)",
+# Different options and guidance for women vs men.
+VALID_HAIR_LENGTHS_FEMALE = [
+    "Short (pixie / above ears)",
+    "Short-medium (bob / chin length)",
     "Medium (chin to shoulder)",
     "Long (shoulder to mid-back)",
     "Very long (below mid-back)",
 ]
 
-HAIR_LENGTH_STYLE = {
-    "Short (above ears / pixie)": {
-        "keywords": "statement neckline open collar turtleneck visible neck",
-        "note": "statement necklines and open collars shine with short hair",
+VALID_HAIR_LENGTHS_MALE = [
+    "Very short (buzz cut / fade)",
+    "Short (close-cropped)",
+    "Medium (top-of-ear to neck)",
+    "Longer / Flow",
+]
+
+HAIR_LENGTH_STYLE_FEMALE = {
+    "Short (pixie / above ears)": {
+        "keywords": "statement neckline open collar turtleneck visible neck elegant",
+        "note": "statement necklines, open collars, and turtlenecks shine with "
+                "short hair — the neck is the focal point",
     },
-    "Short-medium (ear to chin / bob)": {
-        "keywords": "boat neck off-shoulder collarbone neckline",
-        "note": "boat necks and off-shoulder styles complement a bob",
+    "Short-medium (bob / chin length)": {
+        "keywords": "boat neck off-shoulder collarbone neckline structured collar",
+        "note": "boat necks and off-shoulder styles that showcase the collarbone",
     },
     "Medium (chin to shoulder)": {
-        "keywords": "V-neck scoop versatile neckline",
+        "keywords": "V-neck scoop versatile neckline balanced",
         "note": "most necklines work well with medium-length hair",
     },
     "Long (shoulder to mid-back)": {
-        "keywords": "deep V halter backless open back neckline",
+        "keywords": "deep V halter backless open back neckline plunge",
         "note": "deep V-necks, halters, and open-back styles show beautifully "
                 "with long hair",
     },
     "Very long (below mid-back)": {
-        "keywords": "backless halter deep V open back statement back",
+        "keywords": "backless halter deep V open back statement back dramatic",
         "note": "backless and halter styles that let long hair be the focal point",
     },
 }
+
+HAIR_LENGTH_STYLE_MALE = {
+    "Very short (buzz cut / fade)": {
+        "keywords": "any collar open collar crew neck versatile statement",
+        "note": "any collar style works — a close cut makes any neckline look clean",
+    },
+    "Short (close-cropped)": {
+        "keywords": "crew neck V-neck open collar button-down classic",
+        "note": "classic crew necks, V-necks, and button-downs all look sharp "
+                "with short hair",
+    },
+    "Medium (top-of-ear to neck)": {
+        "keywords": "crew neck relaxed open collar casual versatile",
+        "note": "relaxed crew necks and open collars complement medium-length hair",
+    },
+    "Longer / Flow": {
+        "keywords": "V-neck open collar relaxed crew neck casual flow",
+        "note": "V-necks and relaxed open collars suit longer hair well — "
+                "avoid tight high necklines",
+    },
+}
+
+# Unified accessors (defaults; overridden in app.py per gender)
+VALID_HAIR_LENGTHS = VALID_HAIR_LENGTHS_FEMALE
+HAIR_LENGTH_STYLE  = HAIR_LENGTH_STYLE_FEMALE
+
+# Unified body type accessor (default to female)
+VALID_BODY_TYPES = VALID_BODY_TYPES_FEMALE
+BODY_TYPE_STYLE  = BODY_TYPE_STYLE_FEMALE
 
 # Normalise skin tone input to the keys used in SKIN_PROFILE
 def _normalise_skin(raw: str) -> str:
@@ -1175,38 +1336,63 @@ def build_combined_query(
     # ── Body type phrase ───────────────────────────────────────────────────
     body_type   = appearance.get("body_type", "")
     body_phrase = ""
-    if body_type and body_type in BODY_TYPE_STYLE:
-        b = BODY_TYPE_STYLE[body_type]
-        body_phrase = (
-            f"My body type is {body_type}. I look best in {b['note']}. "
-            f"{b['keywords']}"
-        )
+    if body_type:
+        # Use gender-specific map if available
+        if gender == "Man" and body_type in BODY_TYPE_STYLE_MALE:
+            b = BODY_TYPE_STYLE_MALE[body_type]
+        elif body_type in BODY_TYPE_STYLE_FEMALE:
+            b = BODY_TYPE_STYLE_FEMALE[body_type]
+        else:
+            b = BODY_TYPE_STYLE.get(body_type, {})
+        if b:
+            body_phrase = (
+                f"My body type is {body_type}. I look best in {b['note']}. "
+                f"{b['keywords']}"
+            )
 
     # ── Height phrase ──────────────────────────────────────────────────────
     height      = appearance.get("height", "")
     height_phrase = ""
-    if height and height in HEIGHT_STYLE:
-        h = HEIGHT_STYLE[height]
-        height_phrase = f"I am {height}. I suit {h['note']}. {h['keywords']}"
+    if height:
+        if gender == "Man" and height in HEIGHT_STYLE_MALE:
+            h = HEIGHT_STYLE_MALE[height]
+        elif height in HEIGHT_STYLE_FEMALE:
+            h = HEIGHT_STYLE_FEMALE[height]
+        else:
+            h = HEIGHT_STYLE.get(height, {})
+        if h:
+            height_phrase = f"I am {height}. I suit {h['note']}. {h['keywords']}"
 
     # ── Face shape phrase ──────────────────────────────────────────────────
     face_shape   = appearance.get("face_shape", "")
     face_phrase  = ""
-    if face_shape and face_shape in FACE_SHAPE_NECKLINE:
-        f = FACE_SHAPE_NECKLINE[face_shape]
-        face_phrase = (
-            f"My face shape is {face_shape}. I suit {f['note']}. "
-            f"{f['keywords']}"
-        )
+    if face_shape:
+        if gender == "Man" and face_shape in FACE_SHAPE_NECKLINE_MALE:
+            f = FACE_SHAPE_NECKLINE_MALE[face_shape]
+        elif face_shape in FACE_SHAPE_NECKLINE_FEMALE:
+            f = FACE_SHAPE_NECKLINE_FEMALE[face_shape]
+        else:
+            f = FACE_SHAPE_NECKLINE.get(face_shape, {})
+        if f:
+            face_phrase = (
+                f"My face shape is {face_shape}. I suit {f['note']}. "
+                f"{f['keywords']}"
+            )
 
     # ── Hair length phrase ─────────────────────────────────────────────────
     hair_length   = appearance.get("hair_length", "")
     hair_len_phrase = ""
-    if hair_length and hair_length in HAIR_LENGTH_STYLE:
-        hl = HAIR_LENGTH_STYLE[hair_length]
-        hair_len_phrase = (
-            f"My hair is {hair_length}. {hl['note']}. {hl['keywords']}"
-        )
+    if hair_length:
+        if gender == "Man" and hair_length in HAIR_LENGTH_STYLE_MALE:
+            hl = HAIR_LENGTH_STYLE_MALE[hair_length]
+        elif hair_length in HAIR_LENGTH_STYLE_FEMALE:
+            hl = HAIR_LENGTH_STYLE_FEMALE[hair_length]
+        else:
+            hl = HAIR_LENGTH_STYLE.get(hair_length, {})
+        if hl:
+            hair_len_phrase = (
+                f"My hair is {hair_length}. {hl['note']}. {hl['keywords']}"
+            )
 
     # ── Color merge ────────────────────────────────────────────────────────
     all_colors = colors[:4] + [c for c in mbti["colors"] if c not in colors][:2]
