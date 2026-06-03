@@ -722,12 +722,16 @@ def retrieve_top_products(
     for score, product in zip(scores, products):
         if _is_blocked(product):
             continue
-        # Apply style-preference brand exclusions (e.g. minimalist excludes I AM GIA)
-        excluded_brands = set(appearance.get("female_excluded_brands", [])) if appearance else set()
-        if excluded_brands:
-            prod_brand = product.get("brand", "").lower().strip()
-            if prod_brand in excluded_brands:
-                continue
+        # Apply style-preference brand exclusions for both genders
+        if appearance:
+            excluded = (
+                set(appearance.get("female_excluded_brands", [])) |
+                set(appearance.get("male_excluded_brands",   []))
+            )
+            if excluded:
+                prod_brand = product.get("brand", "").lower().strip()
+                if prod_brand in excluded:
+                    continue
         p = dict(product)
         p["similarity"] = round(score, 4)
         scored.append(p)
@@ -1088,7 +1092,7 @@ def render_profile_summary(appearance: dict, mbti_type: str):
 def _save_appearance_and_advance(eye, hair, skin, gender, season, colors, style_note,
                                   body_type="", height="", face_shape="", hair_length="",
                                   male_style_keywords="", female_style_keywords="",
-                                  female_excluded_brands=None):
+                                  female_excluded_brands=None, male_excluded_brands=None):
     """Save appearance profile to session state and move to step 2."""
     st.session_state.appearance = {
         "eye_color":              eye.lower(),
@@ -1105,6 +1109,7 @@ def _save_appearance_and_advance(eye, hair, skin, gender, season, colors, style_
         "male_style_keywords":    male_style_keywords,
         "female_style_keywords":  female_style_keywords,
         "female_excluded_brands": list(female_excluded_brands) if female_excluded_brands else [],
+        "male_excluded_brands":   list(male_excluded_brands)   if male_excluded_brands   else [],
     }
     st.session_state.step = 2
     st.rerun()
@@ -1298,9 +1303,10 @@ def step_appearance():
 
     # ── Color / Style section — different for men vs women ────────────────
     # Initialise all keyword/exclusion vars so the continue buttons always have them
-    male_style_keywords   = ""
-    female_style_keywords = ""
+    male_style_keywords    = ""
+    female_style_keywords  = ""
     female_excluded_brands = set()
+    male_excluded_brands   = set()
 
     if is_male:
         # Men: skip seasonal color palette (it's a women's fashion concept)
@@ -1321,6 +1327,8 @@ def step_appearance():
                 ),
                 "colors": ["navy", "charcoal", "white", "light blue", "grey", "black"],
                 "note": "sharp, professional pieces — dress shirts, tailored trousers, blazers",
+                "exclude_brands": {"i am gia", "i.am.gia", "princess polly",
+                                   "buff bunny", "buffbunny-fresh", "ryderwear"},
             },
             "Smart Casual": {
                 "keywords": (
@@ -1329,33 +1337,46 @@ def step_appearance():
                 ),
                 "colors": ["navy", "charcoal", "white", "grey", "khaki"],
                 "note": "polished but relaxed — chinos, clean button-downs, and smart basics",
+                "exclude_brands": {"i am gia", "i.am.gia", "princess polly",
+                                   "buff bunny", "buffbunny-fresh", "ryderwear"},
             },
             # ── Lifestyle ─────────────────────────────────────────────────
             "Streetwear / Hype": {
                 "keywords": "oversized graphic tee hoodie cargo jogger streetwear bold drop",
                 "colors": ["black", "white", "grey", "bold prints"],
                 "note": "bold graphics, oversized silhouettes, and statement pieces",
+                "exclude_brands": {"buff bunny", "buffbunny-fresh", "ryderwear",
+                                   "alo yoga", "girlfriend collective"},
             },
             "Classic / Preppy": {
                 "keywords": "classic polo crewneck straight leg chino timeless clean heritage",
                 "colors": ["navy", "white", "khaki", "grey", "burgundy"],
                 "note": "timeless staples — polos, straight-leg denim, clean basics",
+                "exclude_brands": {"i am gia", "i.am.gia", "princess polly",
+                                   "buff bunny", "buffbunny-fresh", "ryderwear"},
             },
             "Minimalist / Clean": {
-                "keywords": "minimalist neutral clean simple tonal monochrome essential basic",
+                "keywords": "minimalist neutral clean simple tonal monochrome essential basic crew neck straight leg trouser",
                 "colors": ["black", "white", "grey", "navy", "tan"],
                 "note": "simple, tonal, high-quality basics with no noise",
+                "exclude_brands": {"i am gia", "i.am.gia", "princess polly",
+                                   "buff bunny", "buffbunny-fresh", "ryderwear",
+                                   "born primitive", "hylete"},
             },
             "Rugged / Outdoorsy": {
                 "keywords": "rugged durable outdoor flannel work boot cargo utility waxed",
                 "colors": ["olive", "tan", "brown", "rust", "camo"],
                 "note": "durable, functional pieces with an outdoor edge",
+                "exclude_brands": {"i am gia", "i.am.gia", "princess polly",
+                                   "buff bunny", "buffbunny-fresh", "ryderwear",
+                                   "alo yoga", "girlfriend collective"},
             },
             # ── Active ────────────────────────────────────────────────────
             "Athletic / Performance": {
                 "keywords": "athletic performance training workout gym fitted stretch breathable",
                 "colors": ["black", "grey", "navy", "bold"],
                 "note": "functional, performance-focused pieces that move with you",
+                "exclude_brands": {"i am gia", "i.am.gia", "princess polly"},
             },
         }
 
@@ -1376,6 +1397,10 @@ def step_appearance():
         # For colors, use the first selected style's palette as the base
         colors     = MALE_STYLE_PREFS[style_prefs[0]]["colors"]
         style_note = " + ".join(MALE_STYLE_PREFS[p]["note"] for p in style_prefs)
+        # Collect brand exclusions for men's style (stored in appearance)
+        male_excluded_brands = set.union(
+            *[MALE_STYLE_PREFS[p].get("exclude_brands", set()) for p in style_prefs]
+        )
 
         if len(style_prefs) == 1:
             st.caption(f"✓ {MALE_STYLE_PREFS[style_prefs[0]]['note']}")
@@ -1562,6 +1587,7 @@ If it feels off, override it below or visit [colorwise.me](https://colorwise.me)
             male_style_keywords=male_style_keywords,
             female_style_keywords=female_style_keywords if not is_male else "",
             female_excluded_brands=female_excluded_brands if not is_male else set(),
+            male_excluded_brands=male_excluded_brands if is_male else set(),
         )
 
     top_btn_placeholder.empty()
@@ -1575,6 +1601,7 @@ If it feels off, override it below or visit [colorwise.me](https://colorwise.me)
                 male_style_keywords=male_style_keywords,
                 female_style_keywords=female_style_keywords if not is_male else "",
                 female_excluded_brands=female_excluded_brands if not is_male else set(),
+                male_excluded_brands=male_excluded_brands if is_male else set(),
             )
 
 
