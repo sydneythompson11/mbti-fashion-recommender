@@ -338,8 +338,8 @@ SHOPIFY_STORES = [
     {"base_url": "https://www.frankandoak.com",    "brand": "Frank And Oak",   "gender_hint": "Unisex"},
     # MNML — affordable streetwear, men's
     {"base_url": "https://www.mnml.la",            "brand": "MNML",            "gender_hint": "Male"},
-    # I AM GIA — edgy women's fashion, popular with young adults
-    {"base_url": "https://www.iamgia.com",         "brand": "I AM GIA",        "gender_hint": "Female"},
+    # I AM GIA — removed from scraping (clothing too revealing for class demo)
+    # {"base_url": "https://www.iamgia.com", "brand": "I AM GIA", "gender_hint": "Female"},
 
     # ── Women's Activewear ────────────────────────────────────────────────
     # Alo Yoga — premium yoga + gym wear, women's focus

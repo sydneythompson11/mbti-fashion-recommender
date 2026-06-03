@@ -428,7 +428,7 @@ def fetch_shopify_image(product_url: str, brand: str, cached_image: str = "") ->
     brand_normalized = (brand_lower
         .replace(" outlet", "").replace("-fresh", "")
         .replace(" lower impact", "").replace(" petite", "")
-        .replace(" tall", "").replace("i.am.gia", "i am gia")
+        .replace(" tall", "").replace("i am gia")
         .replace("buffbunny", "buff bunny")
         .strip())
 
@@ -1345,7 +1345,7 @@ def step_appearance():
                 ),
                 "colors": ["navy", "charcoal", "white", "light blue", "grey", "black"],
                 "note": "sharp, professional pieces — dress shirts, tailored trousers, blazers",
-                "exclude_brands": {"i am gia", "i.am.gia", "princess polly",
+                "exclude_brands": {"princess polly",
                                    "buff bunny", "buffbunny-fresh", "ryderwear"},
             },
             "Smart Casual": {
@@ -1355,7 +1355,7 @@ def step_appearance():
                 ),
                 "colors": ["navy", "charcoal", "white", "grey", "khaki"],
                 "note": "polished but relaxed — chinos, clean button-downs, and smart basics",
-                "exclude_brands": {"i am gia", "i.am.gia", "princess polly",
+                "exclude_brands": {"princess polly",
                                    "buff bunny", "buffbunny-fresh", "ryderwear"},
             },
             # ── Lifestyle ─────────────────────────────────────────────────
@@ -1370,14 +1370,14 @@ def step_appearance():
                 "keywords": "classic polo crewneck straight leg chino timeless clean heritage",
                 "colors": ["navy", "white", "khaki", "grey", "burgundy"],
                 "note": "timeless staples — polos, straight-leg denim, clean basics",
-                "exclude_brands": {"i am gia", "i.am.gia", "princess polly",
+                "exclude_brands": {"princess polly",
                                    "buff bunny", "buffbunny-fresh", "ryderwear"},
             },
             "Minimalist / Clean": {
                 "keywords": "minimalist neutral clean simple tonal monochrome essential basic crew neck straight leg trouser",
                 "colors": ["black", "white", "grey", "navy", "tan"],
                 "note": "simple, tonal, high-quality basics with no noise",
-                "exclude_brands": {"i am gia", "i.am.gia", "princess polly",
+                "exclude_brands": {"princess polly",
                                    "buff bunny", "buffbunny-fresh", "ryderwear",
                                    "born primitive", "hylete"},
             },
@@ -1385,7 +1385,7 @@ def step_appearance():
                 "keywords": "rugged durable outdoor flannel work boot cargo utility waxed",
                 "colors": ["olive", "tan", "brown", "rust", "camo"],
                 "note": "durable, functional pieces with an outdoor edge",
-                "exclude_brands": {"i am gia", "i.am.gia", "princess polly",
+                "exclude_brands": {"princess polly",
                                    "buff bunny", "buffbunny-fresh", "ryderwear",
                                    "alo yoga", "girlfriend collective"},
             },
@@ -1394,7 +1394,7 @@ def step_appearance():
                 "keywords": "athletic performance training workout gym fitted stretch breathable",
                 "colors": ["black", "grey", "navy", "bold"],
                 "note": "functional, performance-focused pieces that move with you",
-                "exclude_brands": {"i am gia", "i.am.gia", "princess polly"},
+                "exclude_brands": {"princess polly"},
             },
         }
 
@@ -1516,14 +1516,14 @@ If it feels off, override it below or visit [colorwise.me](https://colorwise.me)
                     "workwear office formal tailored midi structured top polished authority "
                     "mmlafleur gibson white warren"
                 ),
-                "exclude_brands": {"i am gia", "i.am.gia", "princess polly"},
+                "exclude_brands": {"princess polly"},
             },
             "Smart Casual": {
                 "keywords": (
                     "smart casual polished blouse midi skirt chino blazer brunch "
                     "neat put-together elevated midi dress tailored relaxed"
                 ),
-                "exclude_brands": {"i am gia", "i.am.gia"},
+                "exclude_brands": {"i.am.gia"},
             },
             # ── Lifestyle ─────────────────────────────────────────────────
             "Everyday / Casual": {
@@ -1545,7 +1545,7 @@ If it feels off, override it below or visit [colorwise.me](https://colorwise.me)
                     "floral flowy maxi linen boho earthy wrap dress "
                     "free-spirited natural textured tiered ruffle"
                 ),
-                "exclude_brands": {"i am gia", "i.am.gia"},
+                "exclude_brands": {"i.am.gia"},
             },
             "Minimalist / Clean": {
                 "keywords": (
@@ -1557,7 +1557,6 @@ If it feels off, override it below or visit [colorwise.me](https://colorwise.me)
                 ),
                 # Minimalist means no going-out or activewear-focused brands
                 "exclude_brands": {
-                    "i am gia", "i.am.gia",
                     "buff bunny", "buffbunny-fresh",
                     "ryderwear",
                     "born primitive",
