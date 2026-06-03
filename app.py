@@ -476,6 +476,7 @@ def embed_products(_model: SentenceTransformer, product_tuples: tuple) -> np.nda
     # Activity keyword expansion — maps category/brand signals to activity terms
     # so "Airbrush Legging - Alo Yoga" becomes searchable as "yoga gym workout"
     ACTIVITY_EXPANSIONS = {
+        # ── Activewear signals ─────────────────────────────────────────────
         "activewear": "gym workout fitness training athletic sports exercise",
         "legging":    "gym yoga workout running fitness leggings",
         "sports bra": "gym workout fitness training sports bra activewear",
@@ -495,6 +496,28 @@ def embed_products(_model: SentenceTransformer, product_tuples: tuple) -> np.nda
         "jogger":     "gym casual athletic workout",
         "hoodie":     "casual gym warmup athletic streetwear",
         "sweatshirt": "casual gym warmup athletic streetwear",
+        # ── Professional / office signals ─────────────────────────────────
+        "mmlafleur":      "workwear office corporate professional women blazer dress pant blouse",
+        "mm.lafleur":     "workwear office corporate professional women blazer dress pant blouse",
+        "gibson look":    "smart casual office professional women blouse pant skirt polished",
+        "white + warren": "elevated luxury cashmere professional refined women",
+        "white and warren": "elevated luxury cashmere professional refined women",
+        "untuckit":       "office casual professional men button-down shirt oxford",
+        "taylor stitch":  "smart casual professional men shirt jacket chino",
+        "pistol lake":    "minimalist professional men essential clean basics",
+        "grayers":        "smart casual professional men shirt chino jacket",
+        "threadc":        "smart casual professional men chino trouser shirt",
+        "pencil skirt":   "office professional corporate workwear women tailored",
+        "sheath dress":   "office professional corporate workwear women tailored",
+        "work dress":     "office professional corporate workwear women",
+        "blazer":         "office professional corporate workwear tailored structured",
+        "chino":          "office smart casual professional tailored",
+        "dress shirt":    "office professional corporate formal men tailored",
+        "oxford":         "office professional smart casual men shirt",
+        "button-down":    "office professional smart casual tailored shirt",
+        "button down":    "office professional smart casual tailored shirt",
+        "trouser":        "office professional corporate tailored formal",
+        "tailored":       "office professional corporate structured workwear",
     }
 
     texts = []
@@ -724,6 +747,8 @@ def retrieve_top_products(
         "corporate", "office", "work wear", "workwear", "business",
         "professional", "formal", "blazer", "tailored", "smart casual",
         "dress pant", "button-down", "button down",
+        "pencil skirt", "sheath dress", "work dress", "dress shirt",
+        "oxford shirt", "suit trouser", "business casual",
     }
 
     activewear_query    = any(kw in query_lower for kw in activewear_keywords)
@@ -1274,35 +1299,50 @@ def step_appearance():
         )
 
         MALE_STYLE_PREFS = {
-            "Smart Casual / Business Casual": {
-                "keywords": "chino slim fit button-down blazer structured clean polished smart",
-                "colors": ["navy", "charcoal", "white", "grey", "khaki"],
-                "note": "clean, polished pieces that work from desk to dinner",
+            # ── Professional ──────────────────────────────────────────────
+            "Corporate / Office Wear": {
+                "keywords": (
+                    "dress shirt Oxford button-down blazer suit trouser chino "
+                    "structured jacket tailored slim fit professional business "
+                    "formal polished workwear untuckit taylor stitch"
+                ),
+                "colors": ["navy", "charcoal", "white", "light blue", "grey", "black"],
+                "note": "sharp, professional pieces — dress shirts, tailored trousers, blazers",
             },
+            "Smart Casual": {
+                "keywords": (
+                    "chino slim fit button-down open collar clean polished smart "
+                    "crewneck blazer oxford casual friday"
+                ),
+                "colors": ["navy", "charcoal", "white", "grey", "khaki"],
+                "note": "polished but relaxed — chinos, clean button-downs, and smart basics",
+            },
+            # ── Lifestyle ─────────────────────────────────────────────────
             "Streetwear / Hype": {
-                "keywords": "oversized graphic tee hoodie cargo jogger streetwear bold",
+                "keywords": "oversized graphic tee hoodie cargo jogger streetwear bold drop",
                 "colors": ["black", "white", "grey", "bold prints"],
                 "note": "bold graphics, oversized silhouettes, and statement pieces",
             },
-            "Athletic / Performance": {
-                "keywords": "athletic performance training workout gym fitted stretch",
-                "colors": ["black", "grey", "navy", "bold"],
-                "note": "functional, performance-focused pieces that move with you",
-            },
             "Classic / Preppy": {
-                "keywords": "classic polo crewneck straight leg chino timeless clean",
-                "colors": ["navy", "white", "khaki", "grey"],
+                "keywords": "classic polo crewneck straight leg chino timeless clean heritage",
+                "colors": ["navy", "white", "khaki", "grey", "burgundy"],
                 "note": "timeless staples — polos, straight-leg denim, clean basics",
             },
             "Minimalist / Clean": {
-                "keywords": "minimalist neutral clean simple tonal monochrome basic",
+                "keywords": "minimalist neutral clean simple tonal monochrome essential basic",
                 "colors": ["black", "white", "grey", "navy", "tan"],
                 "note": "simple, tonal, high-quality basics with no noise",
             },
             "Rugged / Outdoorsy": {
-                "keywords": "rugged durable outdoor flannel work boot cargo utility",
+                "keywords": "rugged durable outdoor flannel work boot cargo utility waxed",
                 "colors": ["olive", "tan", "brown", "rust", "camo"],
                 "note": "durable, functional pieces with an outdoor edge",
+            },
+            # ── Active ────────────────────────────────────────────────────
+            "Athletic / Performance": {
+                "keywords": "athletic performance training workout gym fitted stretch breathable",
+                "colors": ["black", "grey", "navy", "bold"],
+                "note": "functional, performance-focused pieces that move with you",
             },
         }
 
@@ -1394,13 +1434,39 @@ If it feels off, override it below or visit [colorwise.me](https://colorwise.me)
         st.caption("Helps us prioritise the right types of clothing for your closet.")
 
         FEMALE_STYLE_PREFS = {
-            "Everyday / Casual":          "casual everyday comfortable relaxed jeans top sneakers",
-            "Corporate / Office Wear":    "blazer structured jacket tailored trousers dress pants button-down professional workwear office",
-            "Smart Casual":               "smart casual polished blouse midi skirt chino blazer brunch",
-            "Going Out / Date Night":     "dress midi wrap elegant evening party going out",
-            "Athletic / Activewear":      "legging sports bra tank top training athletic workout yoga gym",
-            "Bohemian / Relaxed":         "floral flowy maxi linen boho earthy wrap dress",
-            "Minimalist / Clean":         "minimalist neutral monochrome clean tonal structured simple",
+            # ── Professional ──────────────────────────────────────────────
+            "Corporate / Office Wear": (
+                "blazer structured jacket tailored trousers dress pants pencil skirt "
+                "sheath dress work dress blouse button-down professional business "
+                "workwear office formal tailored midi structured top "
+                "mmlafleur gibson polished authority"
+            ),
+            "Smart Casual": (
+                "smart casual polished blouse midi skirt chino blazer brunch "
+                "neat put-together elevated everyday"
+            ),
+            # ── Lifestyle ─────────────────────────────────────────────────
+            "Everyday / Casual": (
+                "casual everyday comfortable relaxed jeans top tee sneakers "
+                "weekend basics easygoing"
+            ),
+            "Going Out / Date Night": (
+                "dress midi wrap elegant evening party going out "
+                "feminine flirty statement"
+            ),
+            "Bohemian / Relaxed": (
+                "floral flowy maxi linen boho earthy wrap dress "
+                "free-spirited natural textured"
+            ),
+            "Minimalist / Clean": (
+                "minimalist neutral monochrome clean tonal structured simple "
+                "essential pared-back high-quality"
+            ),
+            # ── Active ────────────────────────────────────────────────────
+            "Athletic / Activewear": (
+                "legging sports bra tank top training athletic workout yoga gym "
+                "performance stretch breathable"
+            ),
         }
 
         style_pref_female = st.selectbox(

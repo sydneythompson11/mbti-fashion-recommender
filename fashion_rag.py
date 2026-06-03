@@ -1208,42 +1208,80 @@ def expand_style_query(raw_input: str) -> str:
     text = raw_input.lower().strip()
 
     EXPANSIONS = {
-        # Professional / office
-        "corporate":      "blazer structured jacket tailored trousers dress pants button-down professional",
-        "office":         "blazer structured jacket tailored trousers dress pants button-down professional",
-        "work wear":      "blazer structured jacket tailored trousers dress pants button-down professional",
-        "workwear":       "blazer structured jacket tailored trousers dress pants button-down professional",
-        "business":       "blazer structured jacket tailored trousers dress pants button-down professional",
-        "professional":   "blazer structured jacket tailored trousers dress pants button-down professional",
-        "formal":         "blazer dress midi maxi structured elegant evening gown",
-        "smart casual":   "blazer chino midi dress structured shirt polished",
+        # ── Professional / office — women's vocabulary ────────────────────
+        # Triggers that include women's office pieces
+        "corporate": (
+            "blazer structured jacket tailored trousers dress pants pencil skirt "
+            "sheath dress work dress blouse button-down professional business workwear "
+            "tailored midi structured top polished authority"
+        ),
+        "office": (
+            "blazer structured jacket tailored trousers dress pants pencil skirt "
+            "sheath dress work dress blouse button-down professional workwear office "
+            "structured top polished"
+        ),
+        "work wear": (
+            "blazer structured jacket tailored trousers dress pants pencil skirt "
+            "sheath dress work dress blouse button-down professional workwear"
+        ),
+        "workwear": (
+            "blazer structured jacket tailored trousers dress pants pencil skirt "
+            "sheath dress work dress blouse button-down professional workwear"
+        ),
+        "business": (
+            "blazer structured jacket tailored trousers dress pants button-down "
+            "professional business polished neat"
+        ),
+        "professional": (
+            "blazer structured jacket tailored trousers dress pants pencil skirt "
+            "sheath dress blouse button-down professional business"
+        ),
+        # ── Men's professional vocabulary (separate triggers) ─────────────
+        "dress shirt":  "dress shirt Oxford button-down blazer suit trouser tailored professional",
+        "oxford shirt": "oxford button-down blazer suit trouser tailored professional",
+        "suit":         "suit blazer dress shirt trouser tailored formal structured",
+        "untuckit":     "button-down shirt oxford casual professional clean",
+        # ── Smart casual ─────────────────────────────────────────────────
+        "smart casual": (
+            "blazer chino midi dress structured shirt polished blouse "
+            "neat put-together elevated"
+        ),
+        "business casual": (
+            "blazer chino button-down dress shirt midi skirt blouse "
+            "polished professional relaxed"
+        ),
+        # ── Formal ───────────────────────────────────────────────────────
+        "formal": (
+            "blazer dress midi maxi structured elegant evening gown "
+            "sheath dress tailored"
+        ),
 
-        # Occasions
-        "date night":     "dress midi wrap elegant feminine floral evening",
-        "going out":      "dress skirt top elegant evening party",
-        "party":          "dress skirt sequin festive evening party",
-        "wedding guest":  "midi dress maxi dress floral elegant formal",
-        "brunch":         "midi dress blouse skirt casual chic",
-        "vacation":       "linen dress sundress floral lightweight resort",
-        "beach":          "linen dress sundress lightweight cover-up",
-        "casual":         "jeans t-shirt relaxed everyday comfortable",
-        "streetwear":     "hoodie jogger oversized graphic tee sneakers",
-        "athleisure":     "legging jogger hoodie comfortable sporty",
+        # ── Occasions ─────────────────────────────────────────────────────
+        "date night":    "dress midi wrap elegant feminine floral evening",
+        "going out":     "dress skirt top elegant evening party",
+        "party":         "dress skirt sequin festive evening party",
+        "wedding guest": "midi dress maxi dress floral elegant formal",
+        "brunch":        "midi dress blouse skirt casual chic polished",
+        "vacation":      "linen dress sundress floral lightweight resort",
+        "beach":         "linen dress sundress lightweight cover-up",
+        "casual":        "jeans t-shirt relaxed everyday comfortable",
+        "streetwear":    "hoodie jogger oversized graphic tee sneakers",
+        "athleisure":    "legging jogger hoodie comfortable sporty",
 
-        # Activewear (explicit)
-        "gym":            "legging sports bra tank top training athletic workout",
-        "yoga":           "legging sports bra tank top yoga flow mindful",
-        "workout":        "legging sports bra tank top training athletic",
-        "running":        "legging shorts tank top compression running athletic",
-        "activewear":     "legging sports bra tank top training athletic workout",
-        "athletic":       "legging sports bra tank top training athletic workout",
+        # ── Activewear ────────────────────────────────────────────────────
+        "gym":          "legging sports bra tank top training athletic workout",
+        "yoga":         "legging sports bra tank top yoga flow mindful",
+        "workout":      "legging sports bra tank top training athletic",
+        "running":      "legging shorts tank top compression running athletic",
+        "activewear":   "legging sports bra tank top training athletic workout",
+        "athletic":     "legging sports bra tank top training athletic workout",
 
-        # Seasons
-        "summer":         "linen lightweight sundress floral sleeveless",
-        "winter":         "coat jacket knit wool sweater warm",
-        "spring":         "floral light jacket midi dress pastel",
-        "fall":           "blazer knit midi dress boots layering",
-        "autumn":         "blazer knit midi dress boots layering",
+        # ── Seasons ───────────────────────────────────────────────────────
+        "summer":  "linen lightweight sundress floral sleeveless",
+        "winter":  "coat jacket knit wool sweater warm",
+        "spring":  "floral light jacket midi dress pastel",
+        "fall":    "blazer knit midi dress boots layering",
+        "autumn":  "blazer knit midi dress boots layering",
     }
 
     added = []
