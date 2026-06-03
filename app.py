@@ -754,9 +754,12 @@ def retrieve_top_products(
     activewear_query    = any(kw in query_lower for kw in activewear_keywords)
     professional_query  = any(kw in query_lower for kw in professional_keywords)
 
-    # Also treat corporate office wear style preference as a professional query
-    female_style_kw = st.session_state.get("appearance", {}).get("female_style_keywords", "") if hasattr(st, 'session_state') else ""
-    if "corporate" in female_style_kw.lower() or "office" in female_style_kw.lower():
+    # Also treat corporate/office style preference as a professional query
+    # (works for both men's and women's combined keyword strings)
+    male_style_kw_check   = st.session_state.get("appearance", {}).get("male_style_keywords", "")
+    female_style_kw_check = st.session_state.get("appearance", {}).get("female_style_keywords", "")
+    combined_style_kw = (male_style_kw_check + " " + female_style_kw_check).lower()
+    if "corporate" in combined_style_kw or "office" in combined_style_kw:
         professional_query = True
 
     if professional_query:
@@ -1346,21 +1349,31 @@ def step_appearance():
             },
         }
 
-        style_pref = st.selectbox(
-            "My style is closest to",
+        style_prefs = st.multiselect(
+            "My style is closest to (pick all that apply)",
             options=list(MALE_STYLE_PREFS.keys()),
-            label_visibility="visible",
+            default=["Smart Casual"],
             key="male_style_pref",
         )
-        pref_data = MALE_STYLE_PREFS[style_pref]
-        st.caption(f"✓ {pref_data['note']}")
+        # Fall back to Smart Casual if nothing selected
+        if not style_prefs:
+            style_prefs = ["Smart Casual"]
 
-        # For men: season is neutral "All", colors come from style preference
-        season     = "All"
-        colors     = pref_data["colors"]
-        style_note = pref_data["note"]
-        # Store style keywords for the query
-        male_style_keywords = pref_data["keywords"]
+        # Combine keywords and notes from all selected styles
+        male_style_keywords = " ".join(
+            MALE_STYLE_PREFS[p]["keywords"] for p in style_prefs
+        )
+        # For colors, use the first selected style's palette as the base
+        colors     = MALE_STYLE_PREFS[style_prefs[0]]["colors"]
+        style_note = " + ".join(MALE_STYLE_PREFS[p]["note"] for p in style_prefs)
+
+        if len(style_prefs) == 1:
+            st.caption(f"✓ {MALE_STYLE_PREFS[style_prefs[0]]['note']}")
+        else:
+            st.caption(f"✓ Blending {len(style_prefs)} styles: {', '.join(style_prefs)}")
+
+        # For men: season is neutral "All", colors from style preference
+        season = "All"
 
     else:
         # Women + non-binary: full seasonal color palette analysis
@@ -1469,14 +1482,25 @@ If it feels off, override it below or visit [colorwise.me](https://colorwise.me)
             ),
         }
 
-        style_pref_female = st.selectbox(
-            "My wardrobe focus is mostly",
+        style_prefs_female = st.multiselect(
+            "My wardrobe focus includes (pick all that apply)",
             options=list(FEMALE_STYLE_PREFS.keys()),
-            label_visibility="visible",
+            default=["Everyday / Casual"],
             key="female_style_pref",
         )
-        female_style_keywords = FEMALE_STYLE_PREFS[style_pref_female]
-        st.caption(f"✓ We'll prioritise **{style_pref_female.lower()}** recommendations.")
+        # Fall back to Everyday / Casual if nothing selected
+        if not style_prefs_female:
+            style_prefs_female = ["Everyday / Casual"]
+
+        # Combine keywords from all selected styles
+        female_style_keywords = " ".join(
+            FEMALE_STYLE_PREFS[p] for p in style_prefs_female
+        )
+
+        if len(style_prefs_female) == 1:
+            st.caption(f"✓ We'll prioritise **{style_prefs_female[0].lower()}** recommendations.")
+        else:
+            st.caption(f"✓ Blending {len(style_prefs_female)} styles: {', '.join(style_prefs_female)}")
 
     # ── Continue button ────────────────────────────────────────────────────
     st.markdown("<br>", unsafe_allow_html=True)
