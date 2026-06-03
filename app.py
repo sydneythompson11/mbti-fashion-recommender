@@ -641,14 +641,22 @@ def _passes_gender_filter(product: dict, target_gender: str) -> bool:
     """
     Return True if this product should be shown to a user with target_gender.
 
-    Rules:
-      Female-tagged  → always shown to Woman, never to Man
-      Male-tagged    → always shown to Man, never to Woman
-      Unisex-tagged  → depends on brand and product name:
-          • Woman: allowed only from genuinely unisex brands AND
-                   not masculine-coded by name
-          • Man:   allowed unless feminine-coded by name
-          • Others: always allowed
+    Woman:
+      - Female-tagged: always shown
+      - Male-tagged: never shown
+      - Unisex: shown unless from a male-brand or masculine-coded name
+
+    Man:
+      - Male-tagged: always shown
+      - Female-tagged: never shown
+      - Unisex: shown unless feminine-coded name
+
+    Non-binary / Genderfluid / Agender / Prefer not to say / Other:
+      - Unisex: ALWAYS shown — these products are specifically designed
+                to be gender-neutral, which aligns with non-binary identity
+      - Female + Male: shown too (let style preference keywords drive what
+                surfaces higher in the ranking — not a hard exclusion)
+      - "Other" (kids, accessories): excluded
     """
     prod_gender  = product.get("gender", "").strip()
     product_name = product.get("product_name", "")
@@ -659,27 +667,35 @@ def _passes_gender_filter(product: dict, target_gender: str) -> bool:
             return True
         if prod_gender in ("Male", "Other"):
             return False
-        # Unisex: only allow from women-friendly brands AND not masculine by name
         if prod_gender == "Unisex":
             if brand in _UNISEX_MALE_BRANDS:
                 return False
             if _is_masculine_coded(product_name):
                 return False
             return True
-        return False  # unknown gender tag → exclude for safety
+        return False
 
     if target_gender == "Male":
         if prod_gender == "Male":
             return True
         if prod_gender in ("Female", "Other"):
             return False
-        # Unisex: allow unless clearly feminine
         if prod_gender == "Unisex":
             return not _is_feminine_coded(product_name)
         return False
 
-    # Non-binary / Genderfluid / Agender / Prefer not to say → Female + Male + Unisex
-    # Still exclude "Other" (kids items, non-clothing accessories)
+    if target_gender == "NonBinary":
+        # Unisex is the primary fit — always include
+        if prod_gender == "Unisex":
+            return True
+        # Include Female and Male — style preference keywords in the query
+        # will naturally push the most relevant items to the top
+        if prod_gender in ("Female", "Male"):
+            return True
+        # Exclude junk/kids/accessories tagged as Other
+        return False
+
+    # Fallback: include everything except junk
     return prod_gender != "Other"
 
 
@@ -1174,11 +1190,13 @@ def step_appearance():
     gender = st.session_state.get("_gender_pick", VALID_GENDER_OPTIONS[0])
 
     # Show what categories this unlocks
-    dataset_genders = GENDER_TO_DATASET.get(gender, ["Female", "Male", "Unisex"])
-    if len(dataset_genders) == 1:
-        scope_note = f"We'll show you **{dataset_genders[0].lower()}** clothing."
+    dataset_genders = GENDER_TO_DATASET.get(gender, ["NonBinary"])
+    if dataset_genders == ["Female"]:
+        scope_note = "We'll show you **women's** clothing and gender-neutral pieces."
+    elif dataset_genders == ["Male"]:
+        scope_note = "We'll show you **men's** clothing and gender-neutral pieces."
     else:
-        scope_note = "We'll show you clothing from **all categories** — women's, men's, and unisex."
+        scope_note = "We'll prioritise **unisex** pieces that transcend gender, plus women's and men's items your style preference points toward."
     st.caption(f"✓ {scope_note}")
 
     st.markdown("---")
@@ -1222,9 +1240,9 @@ def step_appearance():
     st.markdown("#### 👤 Body & Style Traits")
 
     # Determine which option sets to show based on gender selection
-    is_male = (gender == "Man")
+    is_male   = (gender == "Man")
     is_female = (gender == "Woman")
-    # Non-binary / other → show combined / neutral options (use female as base)
+    # Non-binary / other → use women's-style form (more variety) + palette
 
     if is_male:
         body_type_opts   = VALID_BODY_TYPES_MALE
@@ -1477,9 +1495,15 @@ If it feels off, override it below or visit [colorwise.me](https://colorwise.me)
         </div>
         """, unsafe_allow_html=True)
 
-        # ── Occasion / Style preference for women ─────────────────────────
+        # ── Occasion / Style preference for women / non-binary ───────────
         st.markdown("#### 👗 Style Preference")
-        st.caption("Helps us prioritise the right types of clothing for your closet.")
+        if is_female:
+            st.caption("Helps us prioritise the right types of clothing for your closet.")
+        else:
+            st.caption(
+                "Helps us surface the right aesthetic. Since we prioritise unisex pieces "
+                "for you, your style choice shapes which items surface from all categories."
+            )
 
         # Each entry: keywords (for query) + exclude_brands (filtered from results)
         # exclude_brands removes brands that are too far from this aesthetic

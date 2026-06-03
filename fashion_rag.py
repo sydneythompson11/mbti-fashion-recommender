@@ -196,13 +196,13 @@ VALID_GENDER_OPTIONS = [
 # Non-binary / fluid / agender users get recommendations from all categories
 # so they aren't artificially limited to one side of the catalog.
 GENDER_TO_DATASET = {
-    "Woman":               ["Female"],
-    "Man":                 ["Male"],
-    "Non-binary":          ["Female", "Male", "Unisex"],
-    "Genderfluid":         ["Female", "Male", "Unisex"],
-    "Agender":             ["Female", "Male", "Unisex"],
-    "Prefer not to say":   ["Female", "Male", "Unisex"],
-    "Other / Self-describe": ["Female", "Male", "Unisex"],
+    "Woman":                 ["Female"],      # hard-filtered to Female + neutral Unisex
+    "Man":                   ["Male"],        # hard-filtered to Male + neutral Unisex
+    "Non-binary":            ["NonBinary"],   # Unisex-first, style-preference driven
+    "Genderfluid":           ["NonBinary"],
+    "Agender":               ["NonBinary"],
+    "Prefer not to say":     ["NonBinary"],
+    "Other / Self-describe": ["NonBinary"],
 }
 
 # =============================================================================
